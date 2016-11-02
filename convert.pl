@@ -27,6 +27,7 @@ while( my $columns = $csv_in->getline( $in ) )
 {
 	next if @$columns eq 2;
 	next if $columns->[0] eq "Data";
+	next if $columns->[0] eq "Данные";
 	last if $columns->[0] eq "";
 	
 	my $date = convert_date( $columns->[0] );
@@ -34,20 +35,20 @@ while( my $columns = $csv_in->getline( $in ) )
 	my $from = $columns->[2];
 	my $to = $columns->[3];
 	my $note = $columns->[10];
-	
+
 	next unless
 	   ( ! defined $after || 1 != compare_date( $after, $date ) ) &&
 	   ( ! defined $before || -1 != compare_date( $before, $date ) );
-	   
+
 	next if ($to eq "Мое") || ($note =~ /\(скрыть\)/);
-	   
-	if($type eq "Transfer")
+
+	if($type eq "Перевод")
 	{
 	   store_row(\@incomes, $columns, \%account_names) if $from eq "Income";
 	   
 	   store_row(\@in_transfers, $columns, \%account_names) if $from eq "от Евгении";
 	}
-	elsif($type eq "Expense")
+	elsif($type eq "Расход")
 	{
 	   store_row(\@depenses, $columns, \%account_names);
 	}
@@ -108,9 +109,9 @@ sub convert_date
 {
 	my( $date ) = @_;
 
-	die "Invalid date format \"$date\"" unless ( $date =~ /^([0-9]+)\/([0-9]+)\/([0-9]+)$/ );
+	die "Invalid date format \"$date\"" unless ( $date =~ /^([0-9]+)\.([0-9]+)\.([0-9]+)$/ );
 
-	return sprintf("%02d.%02d.%04d", $2, $1, $3 );
+	return sprintf("%02d.%02d.%04d", $1, $2, $3 );
 }
 
 sub split_date
