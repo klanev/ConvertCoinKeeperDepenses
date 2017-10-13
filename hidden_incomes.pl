@@ -14,9 +14,7 @@ my $input_file = $ARGV[0];
 my $after = $params{after};
 my $before = $params{before};
 
-my @depenses;
-my @incomes;
-my @in_transfers;
+my @hidden_incomes;
 
 my %account_names = ("Кошелёк" => undef, "Зарплатная карта" => undef, "Кредитка" => undef, "Копилка" => undef, "ККБ" => undef);
 open( my $in, '<', $input_file ) or die "Can't open $input_file";
@@ -40,25 +38,15 @@ while( my $columns = $csv_in->getline( $in ) )
 	   ( ! defined $after || 1 != compare_date( $after, $date ) ) &&
 	   ( ! defined $before || -1 != compare_date( $before, $date ) );
 
-	next if ($to eq "Мое") || ($note =~ /\(скрыть\)/);
-
-	if($type eq "Перевод")
+	if(($type eq "Перевод") and ($from eq "Income") and ($note =~ /\(скрыть\)/))
 	{
-	   store_row(\@incomes, $columns, \%account_names) if $from eq "Income";
-	   
-	   store_row(\@in_transfers, $columns, \%account_names) if $from eq "от Евгении";
-	}
-	elsif($type eq "Расход")
-	{
-	   store_row(\@depenses, $columns, \%account_names);
+	   store_row(\@hidden_incomes, $columns, \%account_names) if $from eq "Income";
 	}
 }
 
 close( $in );
 
-write_out("depenses.txt", \@depenses);
-write_out("incomes.txt", \@incomes);
-write_out("in_transfers.txt", \@in_transfers);
+write_out("hidden_incomes.txt", \@hidden_incomes);
 
 ###########################################################
 
