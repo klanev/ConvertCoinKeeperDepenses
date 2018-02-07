@@ -18,7 +18,7 @@ my @depenses;
 my @incomes;
 my @in_transfers;
 
-my %account_names = ("Кошелёк" => undef, "Зарплатная карта" => undef, "Кредитка" => undef, "Копилка" => undef, "ККБ" => undef);
+my %account_names = ("Кошелёк" => undef, "Зарплатная карта" => undef, "Кредитка" => undef, "Копилка" => undef, "ККБ" => undef, "Копилка (нал)" => undef);
 open( my $in, '<', $input_file ) or die "Can't open $input_file";
 
 my $csv_in = Text::CSV::Encoded->new( { encoding_in => "utf8" } );
