@@ -41,6 +41,7 @@ while( my $columns = $csv_in->getline( $in ) )
 	   ( ! defined $before || -1 != compare_date( $before, $date ) );
 
 	next if ($to eq "Мое") || ($note =~ /\(скрыть\)/);
+	next if $to eq "Неучтенные";
 
 	if($type eq "Перевод")
 	{
@@ -66,8 +67,11 @@ sub store_row
 {
    my( $acc, $columns, $account_names ) = @_;
    
+   my $from = $columns->[2];
+   my $descr = $columns->[10];
    my $to = $columns->[3];
    my $tags = $columns->[4];
+   my $sum = $columns->[5];
    
    my $notes;
    
@@ -82,9 +86,28 @@ sub store_row
    else
    {
       $notes = $to.".".$tags;
-   }   
-   
-   push @$acc, [ $columns->[10], convert_date( $columns->[0] ), $columns->[5], $notes ];
+   }
+
+   my $index = @$acc + 1;
+
+   my $cashback;
+   if($from eq 'ККБ')
+   {
+ 		$cashback = '1%';
+
+   	if(($descr =~ /Бензин/) || ($descr =~ /Солярка/))
+   	{
+   		$cashback = '10%';
+   	}
+   	elsif($descr =~ /Обед/)
+   	{
+   		$cashback = '5%';
+   	}
+
+   	$sum = "=$sum*(100%-E$index)";
+   }
+
+   push @$acc, [ $descr, convert_date( $columns->[0] ), $sum, $notes, $cashback ];
 }
 
 sub write_out

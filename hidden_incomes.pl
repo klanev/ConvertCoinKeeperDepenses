@@ -38,7 +38,7 @@ while( my $columns = $csv_in->getline( $in ) )
 	   ( ! defined $after || 1 != compare_date( $after, $date ) ) &&
 	   ( ! defined $before || -1 != compare_date( $before, $date ) );
 
-	if(($type eq "Перевод") and ($from eq "Income") and ($note =~ /\(скрыть\)/))
+	if(($type eq "Перевод") and ($from eq "Income") and ($note =~ /(зарплата|премия)/i))
 	{
 	   store_row(\@hidden_incomes, $columns, \%account_names) if $from eq "Income";
 	}
