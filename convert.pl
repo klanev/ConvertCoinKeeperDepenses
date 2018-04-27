@@ -57,6 +57,28 @@ while( my $columns = $csv_in->getline( $in ) )
 
 close( $in );
 
+my @cashbacks;
+my @cb_depenses;
+my $index = 1;
+
+for my $row (@depenses)
+{
+	my $cashback = $row->[4];
+	if($cashback ne "")
+	{
+		my $dep = "(C$index/(100%-E$index))";
+
+		push @cb_depenses, $dep;
+		push @cashbacks, "$dep*E$index";
+		
+	}
+
+	$index = $index + 1;
+}
+
+push @depenses, [ "Траты по ККБ", $before, "=".(join "+", @cb_depenses), "", "" ];
+push @depenses, [ "Кешбек", $before, "=".(join "+", @cashbacks), "", "" ];
+
 write_out("depenses.txt", \@depenses);
 write_out("incomes.txt", \@incomes);
 write_out("in_transfers.txt", \@in_transfers);
@@ -91,7 +113,7 @@ sub store_row
    my $index = @$acc + 1;
 
    my $cashback;
-   if($from eq 'ККБ')
+   if($from eq 'ККБ' and $to ne 'Евгении')
    {
  		$cashback = '1%';
 
