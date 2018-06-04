@@ -57,7 +57,8 @@ while( my $columns = $csv_in->getline( $in ) )
 
 close( $in );
 
-my @cashbacks;
+my @cashbacks_1;
+my @cashbacks_5_10;
 my @cb_depenses;
 my $index = 2;
 
@@ -70,8 +71,17 @@ for my $row (@depenses)
 		my $dep = "(C$index/(100%-$cb_percent))";
 
 		push @cb_depenses, $dep;
-		push @cashbacks, "$dep*$cb_percent";
-		
+
+		my $cashback_val = "$dep*$cb_percent";
+
+		if($cashback == "1%")
+		{
+			push @cashbacks_1, $cashback_val;
+		}
+		else
+		{
+			push @cashbacks_5_10, $cashback_val;
+		}		
 	}
 
 	$index = $index + 1;
@@ -81,9 +91,13 @@ sort_depenses(\@depenses);
 
 sort_depenses(\@incomes);
 my @incs = map { [$_->[1], $_->[2], $_->[0]] } @incomes;
+my $cb_index = 5 + @incs;
 push @incs, [];
+push @incs, ["Реальный кешбек, р.", "", ""];
 push @incs, ["КБ, р.", "Потрачено с ККБ, р.", ""];
-push @incs, ["=".(join "+", @cashbacks), "=".(join "+", @cb_depenses), ""];
+push @incs, ["=E".($cb_index + 1)."+E".($cb_index + 2), "=".(join "+", @cb_depenses), ""];
+push @incs, ["=".(join "+", @cashbacks_1), "1%", ""];
+push @incs, ["=".(join "+", @cashbacks_5_10), "5%-10%", ""];
 
 my @depincs;
 push @depincs, ["", "Дата", "Расходы, р.", "Примечание", "Процент кешбек", "Дата", "Поступления, р.", "Примечание"];
