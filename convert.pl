@@ -59,29 +59,67 @@ close( $in );
 
 my @cashbacks;
 my @cb_depenses;
-my $index = 1;
+my $index = 2;
 
 for my $row (@depenses)
 {
 	my $cashback = $row->[4];
 	if($cashback ne "")
 	{
-		my $dep = "(C$index/(100%-E$index))";
+		my $cb_percent = "H$index";
+		my $dep = "(C$index/(100%-$cb_percent))";
 
 		push @cb_depenses, $dep;
-		push @cashbacks, "$dep*E$index";
+		push @cashbacks, "$dep*$cb_percent";
 		
 	}
 
 	$index = $index + 1;
 }
 
-push @depenses, [ "Траты по ККБ", $before, "=".(join "+", @cb_depenses), "", "" ];
-push @depenses, [ "Кешбек", $before, "=".(join "+", @cashbacks), "", "" ];
+sort_depenses(\@depenses);
 
-write_out("depenses.txt", \@depenses);
-write_out("incomes.txt", \@incomes);
+sort_depenses(\@incomes);
+my @incs = map { [$_->[1], $_->[2], $_->[0]] } @incomes;
+push @incs, [];
+push @incs, ["КБ, р.", "Потрачено с ККБ, р.", ""];
+push @incs, ["=".(join "+", @cashbacks), "=".(join "+", @cb_depenses), ""];
+
+my @depincs;
+push @depincs, ["", "Дата", "Расходы, р.", "Примечание", "Процент кешбек", "Дата", "Поступления, р.", "Примечание"];
+my $depenses_len = @depenses;
+my $incs_len = @incs;
+push @depincs, map
+	{                         
+		[
+			@{ $_ < $depenses_len ?	$depenses[$_]	: ["", "", "", "", ""] },
+			@{ $_ < $incs_len ?		$incs[$_] 		: [] }
+		]
+	}
+	0 .. (max($depenses_len, $incs_len) - 1);
+
+@depincs = map { [$_->[0], $_->[1], $_->[2], $_->[3], $_->[5], $_->[6], $_->[7], $_->[4]] } @depincs;
+
+write_out("depincs.txt", \@depincs);
+
+sort_depenses(\@in_transfers);
 write_out("in_transfers.txt", \@in_transfers);
+
+###########################################################
+
+sub max
+{
+	my($a, $b) = @_;
+
+	return $a < $b ? $b : $a;
+}
+
+sub min
+{
+	my($a, $b) = @_;
+
+	return $a < $b ? $a : $b;
+}
 
 ###########################################################
 
@@ -110,7 +148,7 @@ sub store_row
       $notes = $to.".".$tags;
    }
 
-   my $index = @$acc + 1;
+   my $index = @$acc + 2;
 
    my $cashback;
    if($from eq 'ККБ' and $to ne 'Евгении')
@@ -126,23 +164,29 @@ sub store_row
    		$cashback = '5%';
    	}
 
-   	$sum = "=$sum*(100%-E$index)";
+   	my $cb_percent = "H$index";
+   	$sum = "=$sum*(100%-$cb_percent)";
    }
 
    push @$acc, [ $descr, convert_date( $columns->[0] ), $sum, $notes, $cashback ];
+}
+
+sub sort_depenses
+{
+	my($data) = @_;
+
+	@$data = sort { compare_date( $a->[1], $b->[1] ) } @$data;
 }
 
 sub write_out
 {
    my( $output_file, $data ) = @_;
    
-   my @data = sort { compare_date( $a->[1], $b->[1] ) } @$data;
-
    my $csv_out = Text::CSV::Encoded->new( { encoding_out => "utf8", eol => "\r\n" } );
 
    open( my $out, '>', $output_file ) or die "Can't create $output_file";
 
-   foreach( @data )
+   foreach( @$data )
    {
 	   $csv_out->print( $out, $_ );
    }
