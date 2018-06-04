@@ -18,7 +18,7 @@ my @depenses;
 my @incomes;
 my @in_transfers;
 
-my %account_names = ("Кошелёк" => undef, "Зарплатная карта" => undef, "Кредитка" => undef, "Копилка" => undef, "ККБ" => undef, "Копилка (нал)" => undef);
+my %account_names = ("Кошелёк" => undef, "Зарплатная карта" => undef, "Кредитка" => undef, "Копилка" => undef, "ККБ" => undef, "Копилка (нал)" => undef, "Раффайзен (кредит ШО)" => undef);
 open( my $in, '<', $input_file ) or die "Can't open $input_file";
 
 my $csv_in = Text::CSV::Encoded->new( { encoding_in => "utf8" } );
@@ -155,11 +155,11 @@ sub store_row
    {
  		$cashback = '1%';
 
-   	if(($descr =~ /Бензин/) || ($descr =~ /Солярка/))
+   	if(($descr =~ /Бензин/) || ($descr =~ /Солярка/) || ($tags =~ "10\%"))
    	{
    		$cashback = '10%';
    	}
-   	elsif($descr =~ /Обед/)
+   	elsif($descr =~ /Обед/ || ($descr =~ /Кофе/) || ($tags =~ "5\%"))
    	{
    		$cashback = '5%';
    	}
