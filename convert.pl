@@ -169,11 +169,11 @@ sub store_row
    {
  		$cashback = '1%';
 
-   	if(($descr =~ /Бензин/) || ($descr =~ /Солярка/) || ($tags =~ "10\%"))
+   	if(($descr =~ /Бензин/i) || ($descr =~ /Солярка/i) || ($tags =~ "10\%"))
    	{
    		$cashback = '10%';
    	}
-   	elsif($descr =~ /Обед/ || ($descr =~ /Кофе/) || ($tags =~ "5\%"))
+   	elsif($descr =~ /Обед/i || ($descr =~ /Кофе/i) || ($tags =~ "5\%"))
    	{
    		$cashback = '5%';
    	}
