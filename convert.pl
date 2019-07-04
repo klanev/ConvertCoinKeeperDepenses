@@ -115,6 +115,8 @@ push @depincs, map
 
 @depincs = map { [$_->[0], $_->[1], $_->[2], $_->[3], $_->[5], $_->[6], $_->[7], $_->[4]] } @depincs;
 
+push @depincs, @{ calc_statistics(\@depincs) };
+
 write_out("depincs.txt", \@depincs);
 
 sort_depenses(\@in_transfers);
@@ -248,5 +250,18 @@ sub compare_date
    my( $a, $b ) = @_;
 
    return lex_compare( [ reverse @{ split_date( $a ) } ], [ reverse @{ split_date( $b ) } ] );
+}
+
+#################################################
+
+sub calc_statistics
+{
+   my($depenses) = @_;
+
+   my $dep_len = @$depenses;
+
+   return [
+      ["Сумма","","=SUM(C2:C$dep_len)"]
+   ];
 }
 
