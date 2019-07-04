@@ -7,7 +7,7 @@ use strict;
 
 my ( %params );
 ( GetOptions( \%params, "output=s" , 'after=s', 'before=s' ) && @ARGV == 1 )
-	|| die "Usage: convert <coin keeper csv> [-after <start date>] [-before <end date>]-\n";
+   || die "Usage: convert <coin keeper csv> [-after <start date>] [-before <end date>]-\n";
 
 my $input_file = $ARGV[0];
 
@@ -25,34 +25,34 @@ my $csv_in = Text::CSV::Encoded->new( { encoding_in => "utf8" } );
 
 while( my $columns = $csv_in->getline( $in ) )
 {
-	next if @$columns eq 2;
-	next if $columns->[0] eq "Data";
-	next if $columns->[0] eq "Данные";
-	last if $columns->[0] eq "";
-	
-	my $date = convert_date( $columns->[0] );
-	my $type = $columns->[1];
-	my $from = $columns->[2];
-	my $to = $columns->[3];
-	my $note = $columns->[10];
+   next if @$columns eq 2;
+   next if $columns->[0] eq "Data";
+   next if $columns->[0] eq "Данные";
+   last if $columns->[0] eq "";
+   
+   my $date = convert_date( $columns->[0] );
+   my $type = $columns->[1];
+   my $from = $columns->[2];
+   my $to = $columns->[3];
+   my $note = $columns->[10];
 
-	next unless
-	   ( ! defined $after || 1 != compare_date( $after, $date ) ) &&
-	   ( ! defined $before || -1 != compare_date( $before, $date ) );
+   next unless
+      ( ! defined $after || 1 != compare_date( $after, $date ) ) &&
+      ( ! defined $before || -1 != compare_date( $before, $date ) );
 
-	next if ($to eq "Мое") || ($note =~ /\(скрыть\)/);
-	next if $to eq "Неучтенные";
+   next if ($to eq "Мое") || ($note =~ /\(скрыть\)/);
+   next if $to eq "Неучтенные";
 
-	if($type eq "Перевод")
-	{
-	   store_row(\@incomes, $columns, \%account_names) if $from eq "Income";
-	   
-	   store_row(\@in_transfers, $columns, \%account_names) if $from eq "от Евгении";
-	}
-	elsif($type eq "Расход")
-	{
-	   store_row(\@depenses, $columns, \%account_names);
-	}
+   if($type eq "Перевод")
+   {
+      store_row(\@incomes, $columns, \%account_names) if $from eq "Income";
+      
+      store_row(\@in_transfers, $columns, \%account_names) if $from eq "от Евгении";
+   }
+   elsif($type eq "Расход")
+   {
+      store_row(\@depenses, $columns, \%account_names);
+   }
 }
 
 close( $in );
@@ -64,27 +64,27 @@ my $index = 2;
 
 for my $row (@depenses)
 {
-	my $cashback = $row->[4];
-	if($cashback ne "")
-	{
-		my $cb_percent = "H$index";
-		my $dep = "(C$index/(100%-$cb_percent))";
+   my $cashback = $row->[4];
+   if($cashback ne "")
+   {
+      my $cb_percent = "H$index";
+      my $dep = "(C$index/(100%-$cb_percent))";
 
-		push @cb_depenses, $dep;
+      push @cb_depenses, $dep;
 
-		my $cashback_val = "$dep*$cb_percent";
+      my $cashback_val = "$dep*$cb_percent";
 
-		if($cashback == "1%")
-		{
-			push @cashbacks_1, $cashback_val;
-		}
-		else
-		{
-			push @cashbacks_5_10, $cashback_val;
-		}		
-	}
+      if($cashback == "1%")
+      {
+         push @cashbacks_1, $cashback_val;
+      }
+      else
+      {
+         push @cashbacks_5_10, $cashback_val;
+      }     
+   }
 
-	$index = $index + 1;
+   $index = $index + 1;
 }
 
 sort_depenses(\@depenses);
@@ -104,13 +104,13 @@ push @depincs, ["", "Дата", "Расходы, р.", "Примечание", "
 my $depenses_len = @depenses;
 my $incs_len = @incs;
 push @depincs, map
-	{                         
-		[
-			@{ $_ < $depenses_len ?	$depenses[$_]	: ["", "", "", "", ""] },
-			@{ $_ < $incs_len ?		$incs[$_] 		: [] }
-		]
-	}
-	0 .. (max($depenses_len, $incs_len) - 1);
+   {                         
+      [
+         @{ $_ < $depenses_len ? $depenses[$_]  : ["", "", "", "", ""] },
+         @{ $_ < $incs_len ?     $incs[$_]      : [] }
+      ]
+   }
+   0 .. (max($depenses_len, $incs_len) - 1);
 
 @depincs = map { [$_->[0], $_->[1], $_->[2], $_->[3], $_->[5], $_->[6], $_->[7], $_->[4]] } @depincs;
 
@@ -123,16 +123,16 @@ write_out("in_transfers.txt", \@in_transfers);
 
 sub max
 {
-	my($a, $b) = @_;
+   my($a, $b) = @_;
 
-	return $a < $b ? $b : $a;
+   return $a < $b ? $b : $a;
 }
 
 sub min
 {
-	my($a, $b) = @_;
+   my($a, $b) = @_;
 
-	return $a < $b ? $a : $b;
+   return $a < $b ? $a : $b;
 }
 
 ###########################################################
@@ -167,19 +167,19 @@ sub store_row
    my $cashback;
    if($from eq 'ККБ' and $to ne 'Евгении')
    {
- 		$cashback = '1%';
+      $cashback = '1%';
 
-   	if(($descr =~ /Бензин/i) || ($descr =~ /Солярка/i) || ($tags =~ "10\%"))
-   	{
-   		$cashback = '10%';
-   	}
-   	elsif($descr =~ /Обед/i || ($descr =~ /Кофе/i) || ($tags =~ "5\%"))
-   	{
-   		$cashback = '5%';
-   	}
+      if(($descr =~ /Бензин/i) || ($descr =~ /Солярка/i) || ($tags =~ "10\%"))
+      {
+         $cashback = '10%';
+      }
+      elsif($descr =~ /Обед/i || ($descr =~ /Кофе/i) || ($tags =~ "5\%"))
+      {
+         $cashback = '5%';
+      }
 
-   	my $cb_percent = "H$index";
-   	$sum = "=$sum*(100%-$cb_percent)";
+      my $cb_percent = "H$index";
+      $sum = "=$sum*(100%-$cb_percent)";
    }
 
    push @$acc, [ $descr, convert_date( $columns->[0] ), $sum, $notes, $cashback ];
@@ -187,9 +187,9 @@ sub store_row
 
 sub sort_depenses
 {
-	my($data) = @_;
+   my($data) = @_;
 
-	@$data = sort { compare_date( $a->[1], $b->[1] ) } @$data;
+   @$data = sort { compare_date( $a->[1], $b->[1] ) } @$data;
 }
 
 sub write_out
@@ -202,7 +202,7 @@ sub write_out
 
    foreach( @$data )
    {
-	   $csv_out->print( $out, $_ );
+      $csv_out->print( $out, $_ );
    }
 
    close( $out );   
@@ -210,42 +210,42 @@ sub write_out
 
 sub convert_date
 {
-	my( $date ) = @_;
+   my( $date ) = @_;
 
-	die "Invalid date format \"$date\"" unless ( $date =~ /^([0-9]+)\.([0-9]+)\.([0-9]+)$/ );
+   die "Invalid date format \"$date\"" unless ( $date =~ /^([0-9]+)\.([0-9]+)\.([0-9]+)$/ );
 
-	return sprintf("%02d.%02d.%04d", $1, $2, $3 );
+   return sprintf("%02d.%02d.%04d", $1, $2, $3 );
 }
 
 sub split_date
 {
-	my( $date ) = @_;
+   my( $date ) = @_;
 
-	die "Invalid date format \"$date\"" unless ( $date =~ /^([0-9]{2,2})\.([0-9]{2,2})\.([0-9]{4,4})$/ );
+   die "Invalid date format \"$date\"" unless ( $date =~ /^([0-9]{2,2})\.([0-9]{2,2})\.([0-9]{4,4})$/ );
 
-	return [ $1, $2, $3 ];
+   return [ $1, $2, $3 ];
 }
 
 sub lex_compare
 {
-	my( $a, $b ) = @_;
+   my( $a, $b ) = @_;
 
-	my $i = 0;
+   my $i = 0;
 
-	for(; $i < @$a && $i < @$b; ++ $i )
-	{
-		my $cr = $a->[$i] <=> $b->[$i];
+   for(; $i < @$a && $i < @$b; ++ $i )
+   {
+      my $cr = $a->[$i] <=> $b->[$i];
 
-		return $cr unless $cr == 0;
-	}
+      return $cr unless $cr == 0;
+   }
 
-	return ( @$a - $i ) <=> ( @$b - $i );
+   return ( @$a - $i ) <=> ( @$b - $i );
 }
 
 sub compare_date
 {
-	my( $a, $b ) = @_;
+   my( $a, $b ) = @_;
 
-	return lex_compare( [ reverse @{ split_date( $a ) } ], [ reverse @{ split_date( $b ) } ] );
+   return lex_compare( [ reverse @{ split_date( $a ) } ], [ reverse @{ split_date( $b ) } ] );
 }
 
