@@ -20,8 +20,9 @@ my @in_transfers;
 
 my %account_names = ("Кошелёк" => undef, "Зарплатная карта" => undef, "Кредитка" => undef, "Копилка" => undef, "ККБ" => undef, "Копилка (нал)" => undef, "Раффайзен (кредит ШО)" => undef);
 open( my $in, '<', $input_file ) or die "Can't open $input_file";
+binmode $in;
 
-my $csv_in = Text::CSV::Encoded->new( { encoding_in => "utf8" } );
+my $csv_in = Text::CSV->new({ binary => 1, auto_diag => 1 });
 
 while( my $columns = $csv_in->getline( $in ) )
 {
