@@ -262,7 +262,8 @@ sub calc_statistics
 
    return [
       ["Сумма", "", "=SUM(C2:C$dep_len)"],
-      ["В т.ч. б/\"траншей\"", "", "=C".($dep_len + 1)."-".create_stat_sum($depenses, "Евгении")]
+      ["В т.ч. б/\"траншей\"", "", "=C".($dep_len + 1)."-".create_stat_sum($depenses, ["Евгении"])],
+      ["Сумма (продукты взросл.)", "", "=".create_stat_sum($depenses, ["Groceries", "Eating outside"])]
    ];
 }
 
@@ -288,14 +289,21 @@ sub parse_dep_notes
 
 sub create_stat_sum
 {
-   my($depenses, $to) = @_;
+   my($depenses, $tos) = @_;
 
    my @indexes = grep {
          my $line = $depenses->[$_];
          my $info = parse_dep_notes($line);
 
-         $info->{to} eq $to;
+         find_in_array($info->{to}, $tos);
       } (1..$#$depenses);
 
    return "SUM(".join(';', map { dep_index_to_ref($_) } @indexes).")";
+}
+
+sub find_in_array
+{
+   my($sample, $array) = @_;
+
+   return 0 != (grep { $_ eq $sample } @$array);
 }
