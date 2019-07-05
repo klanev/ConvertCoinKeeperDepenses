@@ -264,8 +264,8 @@ sub calc_statistics
       $depenses,
       [
          {                                           destinations => ["Евгении"] },
-         { name => "Сумма (д/Лизы)"                , tag => "Лиза" },
-         { name => "Сумма (д/Гриши)"               , tag => "Гриша" },
+         { name => "Сумма (д/Лизы)"                , tag => "Лиза",                                      priority => 2 },
+         { name => "Сумма (д/Гриши)"               , tag => "Гриша",                                     priority => 2 },
          { name => "Сумма (продукты взросл.)"      , destinations => ["Groceries", "Eating outside"] },
          { name => "Сумма (крузак)"                , tag => "Новый автомобиль" },
          { name => "Сумма (ШО)"                    , tag => "Новая ШО" },
@@ -345,6 +345,12 @@ sub create_partitions
 
       my @partitions_fit_indexes = grep { is_depense_fits_partition($depense_info, $scheme->[$_]) } (0..$#$scheme);
 
+      sort { get_priority($scheme->[$b]) <=> get_priority($scheme->[$a]) } @partitions_fit_indexes;
+
+      my $max_priority = 0 != @partitions_fit_indexes ? get_priority($scheme->[$partitions_fit_indexes[0]]) : undef;
+
+      @partitions_fit_indexes = grep { $scheme->[$_]->{priority} >= $max_priority } @partitions_fit_indexes;
+
       my $concurrency_factor = @partitions_fit_indexes;
 
       my $part = dep_index_to_ref($index).($concurrency_factor > 1 ? "/".$concurrency_factor : "");
@@ -386,4 +392,11 @@ sub create_sum_of_parts
    my($parts) = @_;
 
    return @$parts != 0 ? "=SUM(".join(';', @$parts).")" : "0";
+}
+
+sub get_priority
+{
+   my($partition) = @_;
+
+   return exists $partition->{priority} ? $partition->{priority} : 0;
 }
