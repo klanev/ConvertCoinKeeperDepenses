@@ -357,12 +357,12 @@ sub create_partitions
 
       foreach(@partitions_fit_indexes)
       {
-         push @{ $scheme_parts[$_] }, $part;
+         push_part($scheme_parts[$_], $part);
       }
 
       if(0 == @partitions_fit_indexes)
       {
-         push @$other_parts, $part;
+         push_part($other_parts, $part);
       }
    }
 
@@ -399,4 +399,35 @@ sub get_priority
    my($partition) = @_;
 
    return exists $partition->{priority} ? $partition->{priority} : 0;
+}
+
+sub push_part
+{
+   my($parts, $part) = @_;
+
+   (push @$parts, $part) unless try_append_to_last_part($parts, $part);
+}
+
+sub try_append_to_last_part
+{
+   my($parts, $part) = @_;
+
+   return 0 if 0 == @$parts;
+
+   my $last = $parts->[$#$parts];
+
+   return 0 unless $last =~ /(([A-Z]\d+)\:)?([A-Z])(\d+)$/;
+   my $from = $2;
+   my $last_row = $3;
+   my $last_line = $4;
+
+   return 0 unless $part =~ /^([A-Z])(\d+)$/;
+   my $part_row = $1;
+   my $part_line = $2;
+
+   return 0 unless ($last_row eq $part_row) and ($last_line == ($part_line - 1));
+
+   $parts->[$#$parts] = (defined $from ? $from : $last_row.$last_line).":".$part;
+
+   return 1;
 }
