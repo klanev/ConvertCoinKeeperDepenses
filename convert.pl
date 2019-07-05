@@ -261,7 +261,41 @@ sub calc_statistics
    my $dep_len = @$depenses;
 
    return [
-      ["Сумма","","=SUM(C2:C$dep_len)"]
+      ["Сумма", "", "=SUM(C2:C$dep_len)"],
+      ["В т.ч. б/\"траншей\"", "", "=C".($dep_len + 1)."-".create_stat_sum($depenses, "Евгении")]
    ];
 }
 
+sub dep_index_to_ref
+{
+   my($index) = @_;
+
+   return "C".($index + 1);
+}
+
+sub parse_dep_notes
+{
+   my($line) = @_;
+
+   my $notes = $line->[3];
+   ($notes =~ /^([^\.]*)(\.(.*))?$/) or die "Failed to parse notes";
+   my $to = $1;
+   my $tags = $3;
+   my @tags = split /, */, $tags;
+
+   return { to => $to, tags => \@tags };
+}
+
+sub create_stat_sum
+{
+   my($depenses, $to) = @_;
+
+   my @indexes = grep {
+         my $line = $depenses->[$_];
+         my $info = parse_dep_notes($line);
+
+         $info->{to} eq $to;
+      } (1..$#$depenses);
+
+   return "SUM(".join(';', map { dep_index_to_ref($_) } @indexes).")";
+}
