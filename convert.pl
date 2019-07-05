@@ -260,11 +260,35 @@ sub calc_statistics
 
    my $dep_len = @$depenses;
 
-   return [
+   my $partitions = create_partitions(
+      $depenses,
+      [
+         {                                           destinations => ["Евгении"] },
+         { name => "Сумма (д/Лизы)"                , tag => "Лиза" },
+         { name => "Сумма (д/Гриши)"               , tag => "Гриша" },
+         { name => "Сумма (продукты взросл.)"      , destinations => ["Groceries", "Eating outside"] },
+         { name => "Сумма (крузак)"                , tag => "Новый автомобиль" },
+         { name => "Сумма (ШО)"                    , tag => "Новая ШО" },
+         { name => "Сумма (моб.)"                  , tag => "связь" },
+         { name => "Сумма (пошив, ремонт одежды)"  , tag => "одежда" },
+         { name => "Сумма (квартира)"              , destinations => ["House"] },
+         { name => "Сумма (подарки к праздникам)"  , destinations => ["Подарки"] },
+         { name => "Сумма (д/И.Л.)"                , tag => "И.Л." },
+         { name => "Сумма (д/РА)"                  , tag => "Р.А." },
+         { name => "Сумма (космет-я, парикмах.)"   , tag => "внешность" },
+         { name => "Сумма (спорт, танцы)"          , tag => "спорт" },
+         { name => "Сумма (медицина)"              , destinations => ["Здоровье"] }
+      ] );
+
+   my $res = [
       ["Сумма", "", "=SUM(C2:C$dep_len)"],
-      ["В т.ч. б/\"траншей\"", "", "=C".($dep_len + 1)."-".create_stat_sum($depenses, ["Евгении"])],
-      ["Сумма (продукты взросл.)", "", "=".create_stat_sum($depenses, ["Groceries", "Eating outside"])]
+      ["В т.ч. б/\"траншей\"", "", "=C".($dep_len + 1)."-".create_stat_by_destinations($depenses, ["Евгении"])],
+      @$partitions
    ];
+
+   push @{ $res->[$#$res] }, "=C".($dep_len + 2)."-SUM(C".($dep_len + 3).":C".(($dep_len + 3) + (@$partitions - 1) - 1).")";
+
+   return $res;
 }
 
 sub dep_index_to_ref
@@ -287,7 +311,7 @@ sub parse_dep_notes
    return { to => $to, tags => \@tags };
 }
 
-sub create_stat_sum
+sub create_stat_by_destinations
 {
    my($depenses, $tos) = @_;
 
@@ -306,4 +330,60 @@ sub find_in_array
    my($sample, $array) = @_;
 
    return 0 != (grep { $_ eq $sample } @$array);
+}
+
+sub create_partitions
+{
+   my($depenses, $scheme) = @_;
+
+   my @scheme_parts = map { [] } @$scheme;
+   my $other_parts = [];
+
+   foreach my $index (1..$#$depenses)
+   {
+      my $depense_info = parse_dep_notes($depenses->[$index]);
+
+      my @partitions_fit_indexes = grep { is_depense_fits_partition($depense_info, $scheme->[$_]) } (0..$#$scheme);
+
+      my $concurrency_factor = @partitions_fit_indexes;
+
+      my $part = dep_index_to_ref($index).($concurrency_factor > 1 ? "/".$concurrency_factor : "");
+
+      foreach(@partitions_fit_indexes)
+      {
+         push @{ $scheme_parts[$_] }, $part;
+      }
+
+      if(0 == @partitions_fit_indexes)
+      {
+         push @$other_parts, $part;
+      }
+   }
+
+   return [
+      (map {
+         [ $scheme->[$_]->{name}, "", create_sum_of_parts($scheme_parts[$_]) ]
+      } grep {
+         defined $scheme->[$_]->{name}
+      } (0..$#$scheme)),
+      [ "Сумма (остальное)", "", create_sum_of_parts($other_parts)]
+   ];
+}
+
+sub is_depense_fits_partition
+{
+   my($depense_info, $partition) = @_;
+
+   return 1 if exists $partition->{tag} and exists $depense_info->{tags} and find_in_array($partition->{tag}, $depense_info->{tags});
+
+   return 1 if exists $partition->{destinations} and find_in_array($depense_info->{to}, $partition->{destinations});
+
+   return 0;
+}
+
+sub create_sum_of_parts
+{
+   my($parts) = @_;
+
+   return @$parts != 0 ? "=SUM(".join(';', @$parts).")" : "0";
 }
