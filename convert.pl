@@ -1,4 +1,5 @@
-﻿use Text::CSV::Encoded;
+﻿BEGIN { push @INC, '.'; }
+use Text::CSV::Encoded;
 use Getopt::Long;
 use Encode;
 use utf8;
@@ -281,12 +282,12 @@ sub calc_statistics
       ] );
 
    my $res = [
-      ["Сумма", "", "=SUM(C2:C$dep_len)"],
+      ["Сумма", "", "=СУММ(C2:C$dep_len)"],
       ["В т.ч. б/\"траншей\"", "", "=C".($dep_len + 1)."-".create_stat_by_destinations($depenses, ["Евгении"])],
       @$partitions
    ];
 
-   push @{ $res->[$#$res] }, "=C".($dep_len + 2)."-SUM(C".($dep_len + 3).":C".(($dep_len + 3) + (@$partitions - 1) - 1).")";
+   push @{ $res->[$#$res] }, "=C".($dep_len + 2)."-СУММ(C".($dep_len + 3).":C".(($dep_len + 3) + (@$partitions - 1) - 1).")";
 
    return $res;
 }
@@ -322,7 +323,7 @@ sub create_stat_by_destinations
          find_in_array($info->{to}, $tos);
       } (1..$#$depenses);
 
-   return "SUM(".join(';', map { dep_index_to_ref($_) } @indexes).")";
+   return "СУММ(".join(';', map { dep_index_to_ref($_) } @indexes).")";
 }
 
 sub find_in_array
@@ -391,7 +392,7 @@ sub create_sum_of_parts
 {
    my($parts) = @_;
 
-   return @$parts != 0 ? "=SUM(".join(';', @$parts).")" : "0";
+   return @$parts != 0 ? "=СУММ(".join(';', @$parts).")" : "0";
 }
 
 sub get_priority
