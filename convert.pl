@@ -7,7 +7,7 @@ use strict;
 
 
 my ( %params );
-( GetOptions( \%params, "output=s" , 'after=s', 'before=s' ) && @ARGV == 1 )
+( GetOptions( \%params, "output=s" , 'after=s', 'before=s', 'rus' ) && @ARGV == 1 )
    || die "Usage: convert <coin keeper csv> [-after <start date>] [-before <end date>]-\n";
 
 my $input_file = $ARGV[0];
@@ -282,12 +282,12 @@ sub calc_statistics
       ] );
 
    my $res = [
-      ["Сумма", "", "=СУММ(C2:C$dep_len)"],
+      ["Сумма", "", "=".get_sum(\%params)."(C2:C$dep_len)"],
       ["В т.ч. б/\"траншей\"", "", "=C".($dep_len + 1)."-".create_stat_by_destinations($depenses, ["Евгении"])],
       @$partitions
    ];
 
-   push @{ $res->[$#$res] }, "=C".($dep_len + 2)."-СУММ(C".($dep_len + 3).":C".(($dep_len + 3) + (@$partitions - 1) - 1).")";
+   push @{ $res->[$#$res] }, "=C".($dep_len + 2)."-".get_sum(\%params)."(C".($dep_len + 3).":C".(($dep_len + 3) + (@$partitions - 1) - 1).")";
 
    return $res;
 }
@@ -323,7 +323,7 @@ sub create_stat_by_destinations
          find_in_array($info->{to}, $tos);
       } (1..$#$depenses);
 
-   return "СУММ(".join(';', map { dep_index_to_ref($_) } @indexes).")";
+   return get_sum(\%params)."(".join(';', map { dep_index_to_ref($_) } @indexes).")";
 }
 
 sub find_in_array
@@ -392,7 +392,7 @@ sub create_sum_of_parts
 {
    my($parts) = @_;
 
-   return @$parts != 0 ? "=СУММ(".join(';', @$parts).")" : "0";
+   return @$parts != 0 ? "=".get_sum(\%params)."(".join(';', @$parts).")" : "0";
 }
 
 sub get_priority
@@ -431,4 +431,11 @@ sub try_append_to_last_part
    $parts->[$#$parts] = (defined $from ? $from : $last_row.$last_line).":".$part;
 
    return 1;
+}
+
+sub get_sum
+{
+   my($params) = @_;
+
+   return $params->{rus} ? 'СУММ' : 'SUM';
 }
