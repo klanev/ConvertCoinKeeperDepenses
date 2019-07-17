@@ -292,8 +292,14 @@ sub calc_statistics
          { name => "Сумма (д/РА)"                  , tag => "Р.А." },
          { name => "Сумма (космет-я, парикмах.)"   , tag => "внешность" },
          { name => "Сумма (спорт, танцы)"          , tag => "спорт" },
-         { name => "Сумма (медицина)"              , destinations => ["Здоровье"] }
+         { name => "Сумма (медицина)"              , destinations => ["Здоровье"] },
+         { name => "Сумма (отпуск)"                , tag => "отпуск" }
       ] );
+
+   if($partitions->[$#$partitions - 1]->[2] eq '0') # remove Vacation line if empty
+   {
+      splice @$partitions, $#$partitions - 1, 1;
+   }
 
    my $stat_line = $dep_len + 3;
    my $sum_without_transh_line   = $stat_line + 1;
@@ -344,7 +350,7 @@ sub create_stat_by_destinations
          my $info = parse_dep_notes($line);
 
          find_in_array($info->{to}, $tos);
-      } (1..$#$depenses);
+      } (0..$#$depenses);
 
    return get_sum(\%params)."(".join(';', map { dep_index_to_ref($_) } @indexes).")";
 }
