@@ -186,6 +186,8 @@ sub store_row
       $sum = "=$sum*(100%-$cb_percent)";
    }
 
+   $descr = 'Транш' if ($descr eq '') and ($to eq 'Евгении');
+
    push @$acc, [ $descr, convert_date( $columns->[0] ), $sum, $notes, $cashback ];
 }
 
