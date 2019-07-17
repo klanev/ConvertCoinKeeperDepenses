@@ -188,6 +188,8 @@ sub store_row
 
    $descr = 'Транш' if ($descr eq '') and ($to eq 'Евгении');
 
+   $descr =~ s/[\r\n]/ /g;
+
    push @$acc, [ $descr, convert_date( $columns->[0] ), $sum, $notes, $cashback ];
 }
 
