@@ -296,15 +296,21 @@ sub calc_statistics
       ] );
 
    my $stat_line = $dep_len + 3;
+   my $sum_without_transh_line   = $stat_line + 1;
+   my $sum_car_tlcp_line         = $sum_without_transh_line + 5;
+   my $sum_car_sho_line          = $sum_without_transh_line + 6;
+   my $sum_flat_line             = $sum_without_transh_line + 9;
+   my $sum_medicine_line         = $sum_without_transh_line + 15;
 
    my $res = [
       ["", "", "", ""],
       ["Сумма", "", "=".get_sum(\%params)."(C2:C".($dep_len + 1).")", "", "Сумма", "=".get_sum(\%params)."(F2:F".($inc_len + 1).")"],
       ["В т.ч. б/\"траншей\"", "", "=C$stat_line-".create_stat_by_destinations($depenses, ["Евгении"])],
+      ["Сумма б/\"траншей\"-кв.-TLCP-медицина-ШО", "", "=C$sum_without_transh_line-C$sum_flat_line-C$sum_car_tlcp_line-C$sum_medicine_line-C$sum_car_sho_line"],
       @$partitions
    ];
 
-   push @{ $res->[$#$res] }, "=C".($stat_line + 1)."-".get_sum(\%params)."(C".($stat_line + 2).":C".(($stat_line + 2) + (@$partitions - 1) - 1).")";
+   push @{ $res->[$#$res] }, "=C$sum_without_transh_line-".get_sum(\%params)."(C".($sum_without_transh_line + 2).":C".(($sum_without_transh_line + 2) + (@$partitions - 1) - 1).")";
 
    return $res;
 }
