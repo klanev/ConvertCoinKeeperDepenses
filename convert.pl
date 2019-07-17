@@ -19,6 +19,8 @@ my @depenses;
 my @incomes;
 my @in_transfers;
 
+my $prev_cashback;
+
 my %account_names = ("Кошелёк" => undef, "Зарплатная карта" => undef, "Кредитка" => undef, "Копилка" => undef, "ККБ" => undef, "Копилка (нал)" => undef, "Раффайзен (кредит ШО)" => undef);
 open( my $in, '<', $input_file ) or die "Can't open $input_file";
 binmode $in;
@@ -44,6 +46,13 @@ while( my $columns = $csv_in->getline( $in ) )
 
    next if ($to eq "Мое") || ($note =~ /\(скрыть\)/);
    next if $to eq "Неучтенные";
+
+   if($from eq "Income" and $note =~ /^кешбек/i)
+   {
+      $prev_cashback = $columns->[5];
+
+      next;
+   }
 
    if($type eq "Перевод")
    {
@@ -95,7 +104,7 @@ sort_depenses(\@incomes);
 my @incs = map { [$_->[1], $_->[2], $_->[0]] } @incomes;
 my $cb_index = 5 + @incs;
 push @incs, [];
-push @incs, ["Реальный кешбек, р.", "", ""];
+push @incs, ["Реальный кешбек, р.", "?", $prev_cashback];
 push @incs, ["КБ, р.", "Потрачено с ККБ, р.", ""];
 push @incs, ["=E".($cb_index + 1)."+E".($cb_index + 2), "=".(join "+", @cb_depenses), ""];
 push @incs, ["=".(join "+", @cashbacks_1), "1%", ""];
