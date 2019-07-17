@@ -282,9 +282,10 @@ sub calc_statistics
          { name => "Сумма (медицина)"              , destinations => ["Здоровье"] }
       ] );
 
-   my $stat_line = $dep_len + 2;
+   my $stat_line = $dep_len + 3;
 
    my $res = [
+      ["", "", "", ""],
       ["Сумма", "", "=".get_sum(\%params)."(C2:C".($dep_len + 1).")", "", "Сумма", "=".get_sum(\%params)."(F2:F".($inc_len + 1).")"],
       ["В т.ч. б/\"траншей\"", "", "=C$stat_line-".create_stat_by_destinations($depenses, ["Евгении"])],
       @$partitions
