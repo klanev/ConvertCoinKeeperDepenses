@@ -116,7 +116,7 @@ push @depincs, map
 
 @depincs = map { [$_->[0], $_->[1], $_->[2], $_->[3], $_->[5], $_->[6], $_->[7], $_->[4]] } @depincs;
 
-push @depincs, @{ calc_statistics(\@depincs) };
+push @depincs, @{ calc_statistics(\@depenses, \@incomes) };
 
 write_out("depincs.txt", \@depincs);
 
@@ -257,9 +257,10 @@ sub compare_date
 
 sub calc_statistics
 {
-   my($depenses) = @_;
+   my($depenses, $incomes) = @_;
 
    my $dep_len = @$depenses;
+   my $inc_len = @$incomes;
 
    my $partitions = create_partitions(
       $depenses,
@@ -281,13 +282,15 @@ sub calc_statistics
          { name => "Сумма (медицина)"              , destinations => ["Здоровье"] }
       ] );
 
+   my $stat_line = $dep_len + 2;
+
    my $res = [
-      ["Сумма", "", "=".get_sum(\%params)."(C2:C$dep_len)"],
-      ["В т.ч. б/\"траншей\"", "", "=C".($dep_len + 1)."-".create_stat_by_destinations($depenses, ["Евгении"])],
+      ["Сумма", "", "=".get_sum(\%params)."(C2:C".($dep_len + 1).")", "", "Сумма", "=".get_sum(\%params)."(F2:F".($inc_len + 1).")"],
+      ["В т.ч. б/\"траншей\"", "", "=C$stat_line-".create_stat_by_destinations($depenses, ["Евгении"])],
       @$partitions
    ];
 
-   push @{ $res->[$#$res] }, "=C".($dep_len + 2)."-".get_sum(\%params)."(C".($dep_len + 3).":C".(($dep_len + 3) + (@$partitions - 1) - 1).")";
+   push @{ $res->[$#$res] }, "=C".($stat_line + 1)."-".get_sum(\%params)."(C".($stat_line + 2).":C".(($stat_line + 2) + (@$partitions - 1) - 1).")";
 
    return $res;
 }
@@ -296,7 +299,7 @@ sub dep_index_to_ref
 {
    my($index) = @_;
 
-   return "C".($index + 1);
+   return "C".($index + 2);
 }
 
 sub parse_dep_notes
@@ -340,7 +343,7 @@ sub create_partitions
    my @scheme_parts = map { [] } @$scheme;
    my $other_parts = [];
 
-   foreach my $index (1..$#$depenses)
+   foreach my $index (0..$#$depenses)
    {
       my $depense_info = parse_dep_notes($depenses->[$index]);
 
