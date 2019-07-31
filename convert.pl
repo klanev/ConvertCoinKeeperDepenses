@@ -161,6 +161,9 @@ sub store_row
    my $sum = $columns->[5];
    
    my $notes;
+
+   $tags =~ s/Новая ШО/ШО/sg;
+   $tags =~ s/Новый автомобиль/TLCP/sg;
    
    if(($to eq "") || (exists $account_names->{$to}))
    {
@@ -282,8 +285,8 @@ sub calc_statistics
          { name => "Сумма (д/Лизы)"                , tag => "Лиза",                                      priority => 2 },
          { name => "Сумма (д/Гриши)"               , tag => "Гриша",                                     priority => 2 },
          { name => "Сумма (продукты взросл.)"      , destinations => ["Groceries", "Eating outside"] },
-         { name => "Сумма (крузак)"                , tag => "Новый автомобиль" },
-         { name => "Сумма (ШО)"                    , tag => "Новая ШО" },
+         { name => "Сумма (крузак)"                , tag => "TLCP" },
+         { name => "Сумма (ШО)"                    , tag => "ШО" },
          { name => "Сумма (моб.)"                  , tag => "связь" },
          { name => "Сумма (пошив, ремонт одежды)"  , tag => "одежда" },
          { name => "Сумма (квартира)"              , destinations => ["House"] },
