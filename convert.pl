@@ -7,13 +7,15 @@ use strict;
 
 
 my ( %params );
-( GetOptions( \%params, "output=s" , 'after=s', 'before=s', 'rus' ) && @ARGV == 1 )
-   || die "Usage: convert <coin keeper csv> [-after <start date>] [-before <end date>]-\n";
+( GetOptions( \%params, "output=s" , 'after=s', 'before=s', 'rus', 'rate=s%' ) && @ARGV == 1 )
+   || die "Usage: convert <coin keeper csv> [-after <start date>] [-before <end date>] [--rus] [--rate <currency>=<rate>...]\n";
 
 my $input_file = $ARGV[0];
 
 my $after = $params{after};
 my $before = $params{before};
+
+my %rates = %{ $params{rate} or {} };
 
 my @depenses;
 my @incomes;
@@ -159,7 +161,9 @@ sub store_row
    my $to = $columns->[3];
    my $tags = $columns->[4];
    my $sum = $columns->[5];
-   
+   my $currency_from = $columns->[6];
+   my $currency_to = $columns->[8];
+
    my $notes;
 
    $tags =~ s/Новая ШО/ШО/sg;
@@ -176,6 +180,24 @@ sub store_row
    else
    {
       $notes = $to.".".$tags;
+   }
+
+   die "Cannot process incoming transactions in other currency($currency_to)"
+      if($currency_to ne 'RUB');
+
+   if($currency_from ne 'RUB')
+   {
+      if($rates{$currency_from})
+      {
+         $sum =~ s/\,/\./g;
+         $descr = $descr."($sum $currency_from)";
+         $sum = $sum * $rates{$currency_from};
+         $sum =~ s/\./\,/g;
+      }
+      else
+      {
+         die "Currency($currency_from) rate is not set\n";
+      }
    }
 
    my $index = @$acc + 2;
