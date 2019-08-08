@@ -7,8 +7,8 @@ use strict;
 
 
 my ( %params );
-( GetOptions( \%params, "output=s" , 'after=s', 'before=s', 'rus', 'rate=s%' ) && @ARGV == 1 )
-   || die "Usage: convert <coin keeper csv> [-after <start date>] [-before <end date>] [--rus] [--rate <currency>=<rate>...]\n";
+( GetOptions( \%params, "output=s" , 'after=s', 'before=s', 'rus', 'rate=s%', 'squash-travel' ) && @ARGV == 1 )
+   || die "Usage: convert <coin keeper csv> [-after <start date>] [-before <end date>] [--rus] [--rate <currency>=<rate>...] [--squash-travel]\n";
 
 my $input_file = $ARGV[0];
 
@@ -22,6 +22,8 @@ my @incomes;
 my @in_transfers;
 
 my $prev_cashback;
+my $travel_index;
+my $travel_sum;
 
 my %account_names = ("Кошелёк" => undef, "Зарплатная карта" => undef, "Кредитка" => undef, "Копилка" => undef, "ККБ" => undef, "Копилка (нал)" => undef, "Раффайзен (кредит ШО)" => undef);
 open( my $in, '<', $input_file ) or die "Can't open $input_file";
@@ -69,6 +71,13 @@ while( my $columns = $csv_in->getline( $in ) )
 }
 
 close( $in );
+
+if(defined $travel_index)
+{
+   my $travel_sum_ = $travel_sum;
+   $travel_sum_ =~  s/\./\,/g;
+   $depenses[$travel_index]->[2] = $travel_sum_;
+}
 
 my @cashbacks_1;
 my @cashbacks_5_10;
@@ -198,6 +207,21 @@ sub store_row
       {
          die "Currency($currency_from) rate is not set\n";
       }
+   }
+
+   if($params{'squash-travel'} and (grep { $_ eq 'отпуск' } split(/, */, $tags)))
+   {
+      my $sum_ = $sum;
+      $sum_ =~ s/\,/\./g;
+      $travel_sum = $travel_sum + $sum_;
+
+      if(not defined $travel_index)
+      {
+         $travel_index = @$acc;
+         push @$acc, [ 'Отпуск', convert_date( $columns->[0] ), '', '.отпуск', '' ];
+      }
+
+      return;
    }
 
    my $index = @$acc + 2;
