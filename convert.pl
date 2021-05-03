@@ -25,7 +25,7 @@ my $prev_cashback;
 my $travel_index;
 my $travel_sum;
 
-my %account_names = ("Кошелёк" => undef, "Зарплатная карта" => undef, "Кредитка" => undef, "Копилка" => undef, "ККБ" => undef, "Копилка (нал)" => undef, "Раффайзен (кредит ШО)" => undef);
+my %account_names = ("Кошелёк" => undef, "Зарплатная карта" => undef, "Кредитка" => undef, "Копилка" => undef, "ККБ" => undef, "Копилка (нал)" => undef, "Раффайзен (кредит ШО)" => undef, "Кукуруза" => undef);
 open( my $in, '<', $input_file ) or die "Can't open $input_file";
 binmode $in;
 
@@ -175,9 +175,6 @@ sub store_row
 
    my $notes;
 
-   $tags =~ s/Новая ШО/ШО/sg;
-   $tags =~ s/Новый автомобиль/TLCP/sg;
-   
    if(($to eq "") || (exists $account_names->{$to}))
    {
       $notes = $tags;
@@ -227,7 +224,7 @@ sub store_row
    my $index = @$acc + 2;
 
    my $cashback;
-   if($from eq 'ККБ' and $to ne 'Евгении')
+   if($from eq 'ККБ' and $to ne 'Евгении' and not ($tags =~ "не в сумме трат ККБ"))
    {
       $cashback = '1%';
 
@@ -238,6 +235,10 @@ sub store_row
       elsif($descr =~ /Обед/i || ($descr =~ /Кофе/i) || ($tags =~ "5\%"))
       {
          $cashback = '5%';
+      }
+      elsif($tags =~ "0\%")
+      {
+         $cashback = '0%';
       }
 
       my $cb_percent = "H$index";
@@ -335,14 +336,14 @@ sub calc_statistics
          { name => "Сумма (ШО)"                    , tag => "ШО" },
          { name => "Сумма (моб.)"                  , tag => "связь" },
          { name => "Сумма (пошив, ремонт одежды)"  , tag => "одежда" },
-         { name => "Сумма (квартира)"              , destinations => ["House"] },
+         { name => "Сумма (квартира)"              , tag => "Учительская" },
          { name => "Сумма (подарки к праздникам)"  , destinations => ["Подарки"] },
          { name => "Сумма (д/И.Л.)"                , tag => "И.Л." },
          { name => "Сумма (д/РА)"                  , tag => "Р.А." },
          { name => "Сумма (космет-я, парикмах.)"   , tag => "внешность" },
          { name => "Сумма (спорт, танцы)"          , tag => "спорт" },
          { name => "Сумма (медицина)"              , destinations => ["Здоровье"] },
-         { name => "Сумма (квартира в ЖК \"Колумб\")", destinations => ["квартира.Колумб"] },
+         { name => "Сумма (\"Охтинское раздолье\")", tag => "ОхтинскоеРаздолье" },
          { name => "Сумма (Благотворительность)"   , destinations => ["Благотворительность"] },
          { name => "Сумма (отпуск)"                , tag => "отпуск" }
       ] );
@@ -358,12 +359,13 @@ sub calc_statistics
    my $sum_car_sho_line          = $sum_without_transh_line + 6;
    my $sum_flat_line             = $sum_without_transh_line + 9;
    my $sum_medicine_line         = $sum_without_transh_line + 15;
+   my $sum_razdolie_line         = $sum_without_transh_line + 16;
 
    my $res = [
       ["", "", "", ""],
       ["Сумма", "", "=".get_sum(\%params)."(C2:C".($dep_len + 1).")", "", "Сумма", "=".get_sum(\%params)."(F2:F".($inc_len + 1).")"],
       ["В т.ч. б/\"траншей\"", "", "=C$stat_line-".create_stat_by_destinations($depenses, ["Евгении"])],
-      ["Сумма б/\"траншей\"-кв.-TLCP-медицина-ШО", "", "=C$sum_without_transh_line-C$sum_flat_line-C$sum_car_tlcp_line-C$sum_medicine_line-C$sum_car_sho_line"],
+      ["Сумма б/\"траншей\"-кв.-TLCP-медицина-ШО", "", "=C$sum_without_transh_line-C$sum_flat_line-C$sum_razdolie_line-C$sum_car_tlcp_line-C$sum_medicine_line-C$sum_car_sho_line"],
       @$partitions
    ];
 
