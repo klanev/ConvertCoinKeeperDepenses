@@ -322,7 +322,7 @@ sub calc_statistics
       $depenses,
       [
          {                                           destinations => ["Евгении"] },
-         { name => "Сумма (д/Лизы)"                , tag => "Лиза",                                      priority => 2 },
+         { name => "Сумма (д/Лизы)"                , tag => "Лиза", destinations => ["Лизе"],            priority => 2 },
          { name => "Сумма (д/Гриши)"               , tag => "Гриша",                                     priority => 2 },
          { name => "Сумма (продукты взросл.)"      , destinations => ["Groceries", "Eating outside"] },
          { name => "Сумма (крузак)"                , tag => "TLCP" },
