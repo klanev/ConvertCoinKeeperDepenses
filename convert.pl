@@ -48,7 +48,7 @@ while( my $columns = $csv_in->getline( $in ) )
       ( ! defined $after || 1 != compare_date( $after, $date ) ) &&
       ( ! defined $before || -1 != compare_date( $before, $date ) );
 
-   next if ($to eq "Мое") || ($note =~ /\(скрыть\)/);
+   next if ($to eq "Мое") || ($note =~ /\(скрыть\)/) || ($from eq "Income" and $to eq "Копилка");
    next if $to eq "Неучтенные";
 
    if($from eq "Income" and $note =~ /^кешбек/i)
