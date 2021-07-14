@@ -324,6 +324,7 @@ sub calc_statistics
          {                                           destinations => ["Евгении"] },
          { name => "Сумма (д/Лизы)"                , tag => "Лиза", destinations => ["Лизе"],            priority => 2 },
          { name => "Сумма (д/Гриши)"               , tag => "Гриша",                                     priority => 2 },
+         { name => "Сумма (д/Саши)"                , tag => "Саша",                                      priority => 2 },
          { name => "Сумма (продукты взросл.)"      , destinations => ["Groceries", "Eating outside"] },
          { name => "Сумма (крузак)"                , tag => "TLCP" },
          { name => "Сумма (ШО)"                    , tag => "ШО" },
