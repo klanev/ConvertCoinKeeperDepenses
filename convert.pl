@@ -349,11 +349,11 @@ sub calc_statistics
 
    my $stat_line = $dep_len + 3;
    my $sum_without_transh_line   = $stat_line + 1;
-   my $sum_car_tlcp_line         = $sum_without_transh_line + 5;
-   my $sum_car_sho_line          = $sum_without_transh_line + 6;
-   my $sum_flat_line             = $sum_without_transh_line + 9;
-   my $sum_medicine_line         = $sum_without_transh_line + 15;
-   my $sum_razdolie_line         = $sum_without_transh_line + 16;
+   my $sum_car_tlcp_line         = $sum_without_transh_line + 6;
+   my $sum_car_sho_line          = $sum_without_transh_line + 7;
+   my $sum_flat_line             = $sum_without_transh_line + 10;
+   my $sum_medicine_line         = $sum_without_transh_line + 16;
+   my $sum_razdolie_line         = $sum_without_transh_line + 17;
 
    my $res = [
       ["", "", "", ""],
