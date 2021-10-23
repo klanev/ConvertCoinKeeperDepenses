@@ -26,51 +26,42 @@ my $travel_index;
 my $travel_sum;
 
 my %account_names = ("Кошелёк" => undef, "Зарплатная карта" => undef, "Кредитка" => undef, "Копилка" => undef, "ККБ" => undef, "Копилка (нал)" => undef, "Раффайзен (кредит ШО)" => undef, "Кукуруза" => undef);
-open( my $in, '<', $input_file ) or die "Can't open $input_file";
-binmode $in;
 
-my $csv_in = Text::CSV->new({ binary => 1, auto_diag => 1 });
+my $input_data = load_csv($input_file);
 
-while( my $columns = $csv_in->getline( $in ) )
+for my $item (@$input_data)
 {
-   next if @$columns eq 2;
-   next if $columns->[0] eq "Data";
-   next if $columns->[0] eq "Данные";
-   last if $columns->[0] eq "";
-   
-   my $date = convert_date( $columns->[0] );
-   my $type = $columns->[1];
-   my $from = $columns->[2];
-   my $to = $columns->[3];
-   my $note = $columns->[10];
+   my $date = $item->{date};
+   my $type = $item->{type};
+   my $from = $item->{from};
+   my $to = $item->{to};
+   my $descr = $item->{descr};
 
    next unless
       ( ! defined $after || 1 != compare_date( $after, $date ) ) &&
       ( ! defined $before || -1 != compare_date( $before, $date ) );
 
-   next if ($to eq "Мое") || ($note =~ /\(скрыть\)/) || ($from eq "Income" and $to eq "Копилка");
+   next if ($to eq "Мое") || ($descr =~ /\(скрыть\)/) || ($from eq "Income" and $to eq "Копилка");
    next if $to eq "Неучтенные";
 
-   if($from eq "Income" and $note =~ /^кешбек/i)
+   if($from eq "Income" and $descr =~ /^кешбек/i)
    {
-      $prev_cashback = $columns->[5];
+      $prev_cashback = $item->{sum};
 
       next;
    }
 
    if($type eq "Перевод")
    {
-      store_row(\@incomes, $columns, \%account_names) if $from eq "Income";
+      store_row(\@incomes, $item, \%account_names) if $from eq "Income";
       
-      store_row(\@in_transfers, $columns, \%account_names) if $from eq "от Евгении";
+      store_row(\@in_transfers, $item, \%account_names) if $from eq "от Евгении";
    }
    elsif($type eq "Расход")
    {
-      store_row(\@depenses, $columns, \%account_names);
+      store_row(\@depenses, $item, \%account_names);
    }
 }
-
-close( $in );
 
 if(defined $travel_index)
 {
@@ -156,15 +147,15 @@ sub min
 
 sub store_row
 {
-   my( $acc, $columns, $account_names ) = @_;
+   my( $acc, $item, $account_names ) = @_;
    
-   my $from = $columns->[2];
-   my $descr = $columns->[10];
-   my $to = $columns->[3];
-   my $tags = $columns->[4];
-   my $sum = $columns->[5];
-   my $currency_from = $columns->[6];
-   my $currency_to = $columns->[8];
+   my $from = $item->{from};
+   my $descr = $item->{descr};
+   my $to = $item->{to};
+   my $tags = $item->{tags};
+   my $sum = $item->{sum};
+   my $currency_from = $item->{currency_from};
+   my $currency_to = $item->{currency_to};
 
    my $notes;
 
@@ -208,7 +199,7 @@ sub store_row
       if(not defined $travel_index)
       {
          $travel_index = @$acc;
-         push @$acc, [ 'Отпуск', convert_date( $columns->[0] ), '', '.отпуск', '' ];
+         push @$acc, [ 'Отпуск', $item->{date}, '', '.отпуск', '' ];
       }
 
       return;
@@ -242,7 +233,7 @@ sub store_row
 
    $descr =~ s/[\r\n]/ /g;
 
-   push @$acc, [ $descr, convert_date( $columns->[0] ), $sum, $notes, $cashback ];
+   push @$acc, [ $descr, $item->{date}, $sum, $notes, $cashback ];
 }
 
 sub sort_depenses
@@ -514,4 +505,49 @@ sub get_sum
    my($params) = @_;
 
    return $params->{rus} ? 'СУММ' : 'SUM';
+}
+
+sub load_csv
+{
+   my($input_file) = @_;
+
+   my $res = [];
+
+   open( my $in, '<', $input_file ) or die "Can't open $input_file";
+   binmode $in;
+
+   my $csv_in = Text::CSV->new({ binary => 1, auto_diag => 1 });
+
+   while( my $columns = $csv_in->getline( $in ) )
+   {
+      next if @$columns eq 2;
+      next if $columns->[0] eq "Data";
+      next if $columns->[0] eq "Данные";
+      last if $columns->[0] eq "";
+      
+      my $date = convert_date( $columns->[0] );
+      my $type = $columns->[1];
+      my $from = $columns->[2];
+      my $to = $columns->[3];
+      my $descr = $columns->[10];
+      my $tags = $columns->[4];
+      my $sum = $columns->[5];
+      my $currency_from = $columns->[6];
+      my $currency_to = $columns->[8];
+
+      push @$res, {
+         date => $date,
+         type => $type,
+         from => $from,
+         to => $to,
+         descr => $descr,
+         tags => $tags,
+         sum => $sum,
+         currency_from => $currency_from,
+         currency_to => $currency_to };
+   }
+
+   close( $in );
+
+   return $res;
 }
