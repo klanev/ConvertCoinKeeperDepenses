@@ -589,7 +589,9 @@ sub load_web_txt
       {
          my $from = trim_line($ln);
 
-         last if $from =~ /^\d/;
+         print "from = \'$from\'\n";
+
+         last if $from =~ /^([\−\-] )?\d/;
 
          $ln = <$in>;
 
