@@ -10,8 +10,8 @@ Win32::Console::OutputCP(65001);
 binmode(STDOUT, ":unix:utf8");
 
 my ( %params );
-( GetOptions( \%params, "output=s" , 'after=s', 'before=s', 'rus', 'rate=s%', 'squash-travel', 'web-text' ) && @ARGV == 1 )
-   || die "Usage: convert <coin keeper csv> [-after <start date>] [-before <end date>] [--rus] [--rate <currency>=<rate>...] [--squash-travel] [--web-text]\n";
+( GetOptions( \%params, "output=s" , 'after=s', 'before=s', 'rus', 'rate=s%', 'squash-travel', 'web-text', 'year=i' ) && @ARGV == 1 )
+   || die "Usage: convert <coin keeper csv> [-after <start date>] [-before <end date>] [--rus] [--rate <currency>=<rate>...] [--squash-travel] [--web-text] [--year <year of report for web text>]\n";
 
 my $input_file = $ARGV[0];
 
@@ -28,9 +28,9 @@ my $prev_cashback;
 my $travel_index;
 my $travel_sum;
 
-my %account_names = ("Кошелёк" => undef, "Зарплатная карта" => undef, "Кредитка" => undef, "Копилка" => undef, "ККБ" => undef, "Копилка (нал)" => undef, "Раффайзен (кредит ШО)" => undef, "Кукуруза" => undef);
+my %account_names = ("Кошелёк" => undef, "Зарплатная карта" => undef, "Кредитка" => undef, "Копилка" => undef, "ККБ" => undef, "Копилка (нал)" => undef, "Раффайзен (кредит ШО)" => undef, "Кукуруза" => undef, "ЕКП" => undef, "Лента А" => undef);
 
-my $input_data = (not $params{'web-text'}) ? load_csv($input_file) : load_web_txt($input_file);
+my $input_data = (not $params{'web-text'}) ? load_csv($input_file) : load_web_txt($input_file, $params{year});
 
 for my $item (@$input_data)
 {
@@ -557,7 +557,7 @@ sub load_csv
 
 sub load_web_txt
 {
-   my($input_file) = @_;
+   my($input_file, $year) = @_;
 
    my @res;
 
@@ -570,7 +570,7 @@ sub load_web_txt
    my %incomes;
    @incomes{'Income', 'от Евгении', 'Долг', 'от Лизы'} = ();
 
-   my $year = 1900 + (localtime)[5];
+   ($year = 1900 + (localtime)[5]) unless defined $year;
 
    open(my $in, '<:encoding(UTF-8)', $input_file) or die "Can't open $input_file";
 
@@ -614,7 +614,7 @@ sub load_web_txt
          }
 
          my $descr = trim_line($ln);
-         if((not exists $account_names{$descr}) and (not exists $incomes{$descr}) and (not ($descr =~ /^\d/)))
+         if((not exists $account_names{$descr}) and (not exists $incomes{$descr}) and (not ($descr =~ /^([\−\-] )?\d/)))
          {
             $ln = <$in>;
          }
