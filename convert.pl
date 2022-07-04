@@ -591,7 +591,7 @@ sub load_web_txt
 
          print "from = \'$from\'\n";
 
-         last if $from =~ /^([\−\-] )?\d/;
+         last if $from =~ /^(\$\s+)?([\−\-] )?\d/;
 
          $ln = <$in>;
 
@@ -599,8 +599,8 @@ sub load_web_txt
 
          $ln = <$in>;
 
-         die "Wrong sum (\'$ln\') at $." unless trim_line($ln) =~ /^(\d{1,3}( \d{3})*([\.\,]\d{2})?).*$/;
-         my $sum = $1;
+         die "Wrong sum (\'$ln\') at $." unless trim_line($ln) =~ /^(\$\x{200e}\s*)?(\d{1,3}( \d{3})*([\.\,]\d{2})?)(\x{200e}\s*\x{20bd})?$/;
+         my $sum = $2;
          $sum =~ s/ //g;
 
          my @tags;
@@ -608,7 +608,7 @@ sub load_web_txt
          $ln = <$in>;
          if($ln =~ /^\#/)
          {
-            @tags = map { die "Wromg tag \'$_\' at $." unless /^\#(.*)/; $1 } (split / /, $ln);
+            @tags = map { die "Wrong tag \'$_\' at $." unless /^\#(.*)/; $1 } (split / /, $ln);
 
             $ln = <$in>;
          }
