@@ -28,7 +28,7 @@ my $prev_cashback;
 my $travel_index;
 my $travel_sum;
 
-my %account_names = ("Кошелёк" => undef, "Зарплатная карта" => undef, "Кредитка" => undef, "Копилка" => undef, "ККБ" => undef, "Копилка (нал)" => undef, "Раффайзен (кредит ШО)" => undef, "Кукуруза" => undef, "ЕКП" => undef, "Лента А" => undef);
+my %account_names = ("Кошелёк" => undef, "Зарплатная карта" => undef, "Кредитка" => undef, "Копилка" => undef, "ККБ" => undef, "Копилка (нал)" => undef, "Раффайзен (кредит ШО)" => undef, "Кукуруза" => undef, "ЕКП" => undef, "Лента А" => undef, "Binance USDT" => undef, "Bankoff" => undef);
 
 my $input_data = (not $params{'web-text'}) ? load_csv($input_file) : load_web_txt($input_file, $params{year});
 
@@ -44,7 +44,7 @@ for my $item (@$input_data)
       ( ! defined $after || 1 != compare_date( $after, $date ) ) &&
       ( ! defined $before || -1 != compare_date( $before, $date ) );
 
-   next if ($to eq "Мое") || ($descr =~ /\(скрыть\)/) || ($from eq "Income" and $to eq "Копилка");
+   next if ($to eq "Мое") || ($to eq "Мое (\$)") || ($descr =~ /\(скрыть\)/) || ($from eq "Income" and $to eq "Копилка");
    next if $to eq "Неучтенные";
 
    if($from eq "Income" and $descr =~ /^кешбек/i)
