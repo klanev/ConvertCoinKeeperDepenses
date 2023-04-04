@@ -232,7 +232,17 @@ sub store_row
       $sum = "=$sum*(100%-$cb_percent)";
    }
 
-   $descr = 'Транш' if ($descr eq '') and ($to eq 'Евгении');
+   if($to eq 'Евгении')
+   {
+      if($descr eq '')
+      {
+         $descr = 'Транш';
+      }
+      else
+      {
+         $descr = "Транш ($descr)";
+      }
+   }
 
    $descr =~ s/[\r\n]/ /g;
 
