@@ -28,7 +28,7 @@ my $prev_cashback;
 my $travel_index;
 my $travel_sum;
 
-my %account_names = ("Кошелёк" => undef, "Зарплатная карта" => undef, "Кредитка" => undef, "Копилка" => undef, "ККБ" => undef, "Копилка (нал)" => undef, "Раффайзен (кредит ШО)" => undef, "Кукуруза" => undef, "ЕКП" => undef, "Лента А (оф)" => undef, "Лента А (копилка)" => undef, "Binance USDT" => undef, "Bankoff" => undef);
+my %account_names = ("Кошелёк" => undef, "Зарплатная карта" => undef, "Кредитка" => undef, "Копилка" => undef, "ККБ" => undef, "Копилка (нал)" => undef, "Раффайзен (кредит ШО)" => undef, "Кукуруза" => undef, "ЕКП" => undef, "Лента А (оф)" => undef, "Лента А (копилка)" => undef, "Binance USDT" => undef, "Bankoff" => undef, "Бакай \$" => undef, "Бакай" => undef, "BSB \$" => undef, "BSB" => undef);
 
 my $input_data = (not $params{'web-text'}) ? load_csv($input_file) : load_web_txt($input_file, $params{year});
 
