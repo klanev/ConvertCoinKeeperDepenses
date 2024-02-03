@@ -10,8 +10,8 @@ Win32::Console::OutputCP(65001);
 binmode(STDOUT, ":unix:utf8");
 
 my ( %params );
-( GetOptions( \%params, "output=s" , 'after=s', 'before=s', 'rus', 'rate=s%', 'squash-travel', 'web-text', 'year=i' ) && @ARGV == 1 )
-   || die "Usage: convert <coin keeper csv> [-after <start date>] [-before <end date>] [--rus] [--rate <currency>=<rate>...] [--squash-travel] [--web-text] [--year <year of report for web text>]\n";
+( GetOptions( \%params, "output=s" , 'after=s', 'before=s', 'rus', 'rate=s%', 'squash-travel', 'skip-travel', 'web-text', 'year=i' ) && @ARGV == 1 )
+   || die "Usage: convert <coin keeper csv> [-after <start date>] [-before <end date>] [--rus] [--rate <currency>=<rate>...] [--squash-travel] [--skip-travel] [--web-text] [--year <year of report for web text>]\n";
 
 my $input_file = $ARGV[0];
 
@@ -175,7 +175,7 @@ sub store_row
       $notes = $to.".".$tags;
    }
 
-   die "Cannot process incoming transactions in other currency($currency_to)"
+   return
       if($currency_to ne 'RUB');
 
    if($currency_from ne 'RUB')
@@ -193,19 +193,28 @@ sub store_row
       }
    }
 
-   if($params{'squash-travel'} and (grep { $_ eq 'отпуск' } split(/, */, $tags)))
+   my $tags_travel = (grep { $_ eq 'отпуск' } split(/, */, $tags));
+   my $dest_travel = $to =~ /Отпуск/i;
+   if($tags_travel or $dest_travel)
    {
-      my $sum_ = $sum;
-      $sum_ =~ s/\,/\./g;
-      $travel_sum = $travel_sum + $sum_;
-
-      if(not defined $travel_index)
+      if($params{'skip-travel'})
       {
-         $travel_index = @$acc;
-         push @$acc, [ 'Отпуск', $item->{date}, '', '.отпуск', '' ];
+         return;
       }
+      elsif($params{'squash-travel'})
+      {
+         my $sum_ = $sum;
+         $sum_ =~ s/\,/\./g;
+         $travel_sum = $travel_sum + $sum_;
 
-      return;
+         if(not defined $travel_index)
+         {
+            $travel_index = @$acc;
+            push @$acc, [ 'Отпуск', $item->{date}, '', '.отпуск', '' ];
+         }
+
+         return;
+      }
    }
 
    my $index = @$acc + 2;
