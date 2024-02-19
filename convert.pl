@@ -336,8 +336,11 @@ sub calc_statistics
       [
          {                                           destinations => ["Евгении"] },
          { name => "Сумма (д/Лизы)"                , tag => "Лиза", destinations => ["Лизе"],            priority => 2 },
+         { name => "Сумма (д/Лизы, продукты)"      , tag => "Лиза", destinations => ["Groceries"],       priority => 3, conditions => "all" },
          { name => "Сумма (д/Гриши)"               , tag => "Гриша",                                     priority => 2 },
+         { name => "Сумма (д/Гриши, продукты)"     , tag => "Гриша",destinations => ["Groceries"],       priority => 3, conditions => "all"  },
          { name => "Сумма (д/Саши)"                , tag => "Саша",                                      priority => 2 },
+         { name => "Сумма (д/Саши, продукты)"      , tag => "Саша", destinations => ["Groceries"],       priority => 3, conditions => "all"  },
          { name => "Сумма (продукты взросл.)"      , destinations => ["Groceries", "Eating outside"] },
          { name => "Сумма (крузак)"                , tag => "TLCP" },
          { name => "Сумма (ШО)"                    , tag => "ШО" },
@@ -437,11 +440,11 @@ sub create_partitions
 
       my @partitions_fit_indexes = grep { is_depense_fits_partition($depense_info, $scheme->[$_]) } (0..$#$scheme);
 
-      sort { get_priority($scheme->[$b]) <=> get_priority($scheme->[$a]) } @partitions_fit_indexes;
+      @partitions_fit_indexes = sort { get_priority($scheme->[$b]) <=> get_priority($scheme->[$a]) } @partitions_fit_indexes;
 
-      my $max_priority = 0 != @partitions_fit_indexes ? get_priority($scheme->[$partitions_fit_indexes[0]]) : undef;
+      my $max_priority = 0 != @partitions_fit_indexes ? get_priority($scheme->[$partitions_fit_indexes[0]]) : 0;
 
-      @partitions_fit_indexes = grep { $scheme->[$_]->{priority} >= $max_priority } @partitions_fit_indexes;
+      @partitions_fit_indexes = grep { get_priority($scheme->[$_]) >= $max_priority } @partitions_fit_indexes;
 
       my $concurrency_factor = @partitions_fit_indexes;
 
@@ -472,11 +475,34 @@ sub is_depense_fits_partition
 {
    my($depense_info, $partition) = @_;
 
-   return 1 if exists $partition->{tag} and exists $depense_info->{tags} and find_in_array($partition->{tag}, $depense_info->{tags});
+   if($partition->{conditions} eq "all")
+   {
+      return 0 if exists $partition->{tag} && (not is_depense_fits_tag($depense_info, $partition->{tag}));
 
-   return 1 if exists $partition->{destinations} and find_in_array($depense_info->{to}, $partition->{destinations});
+      return 0 if exists $partition->{destinations} && (not is_depense_fits_destinations($depense_info, $partition->{destinations}));
+
+      return 1;
+   }
+
+   return 1 if((exists $partition->{tag}) && is_depense_fits_tag($depense_info, $partition->{tag}));
+
+   return 1 if((exists $partition->{destinations}) && is_depense_fits_destinations($depense_info, $partition->{destinations}));
 
    return 0;
+}
+   
+sub is_depense_fits_tag
+{
+   my($depense_info, $tag) = @_;
+
+   return exists $depense_info->{tags} && find_in_array($tag, $depense_info->{tags});
+}
+
+sub is_depense_fits_destinations
+{
+   my($depense_info, $destinations) = @_;
+
+   return find_in_array($depense_info->{to}, $destinations);
 }
 
 sub create_sum_of_parts
