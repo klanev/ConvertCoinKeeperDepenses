@@ -336,11 +336,11 @@ sub calc_statistics
       [
          {                                           destinations => ["Евгении"] },
          { name => "Сумма (д/Лизы)"                , tag => "Лиза", destinations => ["Лизе"],            priority => 2 },
-         { name => "Сумма (д/Лизы, продукты)"      , tag => "Лиза", destinations => ["Groceries"],       priority => 3, conditions => "all" },
+         { name => ""                              , tag => "Лиза", destinations => ["Groceries"],       priority => 3, conditions => "all" },
          { name => "Сумма (д/Гриши)"               , tag => "Гриша",                                     priority => 2 },
-         { name => "Сумма (д/Гриши, продукты)"     , tag => "Гриша",destinations => ["Groceries"],       priority => 3, conditions => "all"  },
+         { name => ""                              , tag => "Гриша",destinations => ["Groceries"],       priority => 3, conditions => "all"  },
          { name => "Сумма (д/Саши)"                , tag => "Саша",                                      priority => 2 },
-         { name => "Сумма (д/Саши, продукты)"      , tag => "Саша", destinations => ["Groceries"],       priority => 3, conditions => "all"  },
+         { name => ""                              , tag => "Саша", destinations => ["Groceries"],       priority => 3, conditions => "all"  },
          { name => "Сумма (продукты взросл.)"      , destinations => ["Groceries", "Eating outside"] },
          { name => "Сумма (крузак)"                , tag => "TLCP" },
          { name => "Сумма (ШО)"                    , tag => "ШО" },
@@ -381,7 +381,7 @@ sub calc_statistics
       @$partitions
    ];
 
-   push @{ $res->[$#$res] }, "=C$sum_without_transh_line-".get_sum(\%params)."(C".($sum_without_transh_line + 2).":C".(($sum_without_transh_line + 2) + (@$partitions - 1) - 1).")";
+   push @{ $res->[$#$res] }, "=C$sum_without_transh_line-".get_sum(\%params)."(C".($sum_without_transh_line + 2).":D".(($sum_without_transh_line + 2) + (@$partitions - 1) - 1).")";
 
    return $res;
 }
@@ -461,7 +461,7 @@ sub create_partitions
       }
    }
 
-   return [
+   my $partitions = [
       (map {
          [ $scheme->[$_]->{name}, "", create_sum_of_parts($scheme_parts[$_]) ]
       } grep {
@@ -469,6 +469,19 @@ sub create_partitions
       } (0..$#$scheme)),
       [ "Сумма (остальное)", "", create_sum_of_parts($other_parts)]
    ];
+
+
+   for(0..$#$partitions)
+   {
+      if((defined $partitions->[$_]) && ($_ != $#$partitions) && ($partitions->[$_ + 1]->[0] eq ""))
+      {
+         push @{ $partitions->[$_] }, $partitions->[$_ + 1]->[2];
+
+         $partitions->[$_ + 1] = undef;
+      }
+   }
+
+   return [ grep { defined $_ } @$partitions ];
 }
 
 sub is_depense_fits_partition
