@@ -371,13 +371,14 @@ sub calc_statistics
    my $sum_car_sho_line          = $sum_without_transh_line + 7;
    my $sum_flat_line             = $sum_without_transh_line + 10;
    my $sum_medicine_line         = $sum_without_transh_line + 16;
-   my $sum_razdolie_line         = $sum_without_transh_line + 17;
+   my $sum_other_immovable_first = $sum_without_transh_line + 18;
+   my $sum_other_immovable_last  = $sum_other_immovable_first + 2;
 
    my $res = [
       ["", "", "", ""],
       ["Сумма", "", "=".get_sum(\%params)."(C2:C".($dep_len + 1).")", "", "Сумма", "=".get_sum(\%params)."(F2:F".($inc_len + 1).")"],
       ["В т.ч. б/\"траншей\"", "", "=C$stat_line-".create_stat_by_destinations($depenses, ["Евгении"])],
-      ["Сумма б/\"траншей\"-кв.-TLCP-медицина-ШО", "", "=C$sum_without_transh_line-C$sum_flat_line-C$sum_razdolie_line-C$sum_car_tlcp_line-C$sum_medicine_line-C$sum_car_sho_line"],
+      ["Сумма б/\"траншей\"-недвиж.-TLCP-медицина-ШО", "", "=C$sum_without_transh_line-C$sum_flat_line-SUM(C$sum_other_immovable_first:C$sum_other_immovable_last)-C$sum_car_tlcp_line-C$sum_medicine_line-C$sum_car_sho_line"],
       @$partitions
    ];
 
