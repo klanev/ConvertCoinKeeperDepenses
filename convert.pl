@@ -336,11 +336,11 @@ sub calc_statistics
       [
          {                                           destinations => ["Евгении"] },
          { name => "Сумма (д/Лизы)"                , tag => "Лиза", destinations => ["Лизе"],            priority => 2 },
-         { name => ""                              , tag => "Лиза", destinations => ["Groceries"],       priority => 3, conditions => "all" },
+         { name => ""                              , tag => "Лиза", destinations => ["Здоровье"],        priority => 3, conditions => "all" },
          { name => "Сумма (д/Гриши)"               , tag => "Гриша",                                     priority => 2 },
-         { name => ""                              , tag => "Гриша",destinations => ["Groceries"],       priority => 3, conditions => "all"  },
+         { name => ""                              , tag => "Гриша",destinations => ["Здоровье"],        priority => 3, conditions => "all"  },
          { name => "Сумма (д/Саши)"                , tag => "Саша",                                      priority => 2 },
-         { name => ""                              , tag => "Саша", destinations => ["Groceries"],       priority => 3, conditions => "all"  },
+         { name => ""                              , tag => "Саша", destinations => ["Здоровье"],        priority => 3, conditions => "all"  },
          { name => "Сумма (продукты взросл.)"      , destinations => ["Groceries", "Eating outside"] },
          { name => "Сумма (крузак)"                , tag => "TLCP" },
          { name => "Сумма (ШО)"                    , tag => "ШО" },
@@ -367,6 +367,8 @@ sub calc_statistics
 
    my $stat_line = $dep_len + 3;
    my $sum_without_transh_line   = $stat_line + 1;
+   my $sum_child_line_first      = $sum_without_transh_line + 2;
+   my $sum_child_line_last       = $sum_child_line_first + 2;
    my $sum_car_tlcp_line         = $sum_without_transh_line + 6;
    my $sum_car_sho_line          = $sum_without_transh_line + 7;
    my $sum_flat_line             = $sum_without_transh_line + 10;
@@ -378,7 +380,7 @@ sub calc_statistics
       ["", "", "", ""],
       ["Сумма", "", "=".get_sum(\%params)."(C2:C".($dep_len + 1).")", "", "Сумма", "=".get_sum(\%params)."(F2:F".($inc_len + 1).")"],
       ["В т.ч. б/\"траншей\"", "", "=C$stat_line-".create_stat_by_destinations($depenses, ["Евгении"])],
-      ["Сумма б/\"траншей\"-недвиж.-TLCP-медицина-ШО", "", "=C$sum_without_transh_line-C$sum_flat_line-SUM(C$sum_other_immovable_first:C$sum_other_immovable_last)-C$sum_car_tlcp_line-C$sum_medicine_line-C$sum_car_sho_line"],
+      ["Сумма б/\"траншей\"-недвиж.-TLCP-медицина-ШО", "", "=C$sum_without_transh_line-C$sum_flat_line-SUM(C$sum_other_immovable_first:C$sum_other_immovable_last)-C$sum_car_tlcp_line-C$sum_medicine_line-SUM(D$sum_child_line_first:D$sum_child_line_last)-C$sum_car_sho_line"],
       @$partitions
    ];
 
