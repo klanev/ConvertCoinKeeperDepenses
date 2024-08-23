@@ -1,5 +1,6 @@
 ﻿BEGIN { push @INC, '.'; }
 use Text::CSV::Encoded;
+use Excel::Writer::XLSX;
 use Getopt::Long;
 use Encode;
 use utf8;
@@ -108,24 +109,64 @@ sort_depenses(\@depenses);
 sort_depenses(\@incomes);
 my @incs = map { [$_->[1], $_->[2], $_->[0]] } @incomes;
 
-my @depincs;
-push @depincs, ["", "Дата", "Расходы, р.", "Примечание", "", "Дата", "Поступления, р.", "Примечание"];
-my $depenses_len = @depenses;
-my $incs_len = @incs;
-push @depincs, map
-   {                         
-      [
-         @{ $_ < $depenses_len ? $depenses[$_]  : ["", "", "", "", ""] },
-         @{ $_ < $incs_len ?     $incs[$_]      : [] }
-      ]
+my $depincs = Excel::Writer::XLSX->new( 'depincs.xlsx' );
+die "Can't create output file" unless defined $depincs;
+
+my $worksheet = $depincs->add_worksheet();
+$worksheet->set_column(0, 0, 50);
+$worksheet->set_column(1, 2, 10);
+$worksheet->set_column(3, 3, 20);
+$worksheet->set_column(4, 4, 10);
+$worksheet->set_column(6, 6, 20);
+ 
+my $bold_fmt = $depincs->add_format();
+$bold_fmt->set_bold();
+my $num_fmt = $depincs->add_format();
+$num_fmt->set_align('left');
+my $res_fmt = $depincs->add_format();
+$res_fmt->set_bold();
+$res_fmt->set_align('left');
+
+$worksheet->write_row(0, 0, ["", "Дата", "Расходы, р.", "Примечание", "Дата", "Поступления, р.", "Примечание"], $bold_fmt);
+{
+   my $row = 1;
+   for(@depenses)
+   {
+      my @content = @{$_};
+      for my $col (0..1)
+      {
+         $worksheet->write($row, $col, $content[$col]);
+      }
+      $worksheet->write_number($row, 2, to_dot_num($content[2]), $num_fmt);
+      $worksheet->write($row, 3, $content[3]);
+
+      ++$row;
    }
-   0 .. (max($depenses_len, $incs_len) - 1);
+}
+{
+   my $row = 1;
+   for(@incs)
+   {
+      my @content = @{$_};
+      $worksheet->write($row, 4, $content[0]);
+      $worksheet->write_number($row, 5, to_dot_num($content[1]), $num_fmt);
+      $worksheet->write($row, 6, $content[2]);
 
-@depincs = map { [$_->[0], $_->[1], $_->[2], $_->[3], $_->[5], $_->[6], $_->[7], $_->[4]] } @depincs;
+      ++$row;
+   }
+}
 
-push @depincs, @{ calc_statistics(\@depenses, \@incomes) };
+{
+   my $row = max_num(scalar(@depenses), scalar(@incs)) + 1;
+   for(@{ calc_statistics(\@depenses, \@incomes) })
+   {
+      $worksheet->write_row($row, 0, $_, $res_fmt);
 
-write_out("depincs.txt", \@depincs);
+      ++$row;
+   }
+}
+ 
+$depincs->close();
 
 sort_depenses(\@in_transfers);
 write_out("in_transfers.txt", \@in_transfers);
@@ -420,7 +461,7 @@ sub create_stat_by_destinations
          find_in_array($info->{to}, $tos);
       } (0..$#$depenses);
 
-   return get_sum(\%params)."(".join(';', map { dep_index_to_ref($_) } @indexes).")";
+   return get_sum(\%params)."(".join(',', map { dep_index_to_ref($_) } @indexes).")";
 }
 
 sub find_in_array
@@ -525,7 +566,7 @@ sub create_sum_of_parts
 {
    my($parts) = @_;
 
-   return @$parts != 0 ? "=".get_sum(\%params)."(".join(';', @$parts).")" : "0";
+   return @$parts != 0 ? "=".get_sum(\%params)."(".join(',', @$parts).")" : "0";
 }
 
 sub get_priority
@@ -715,4 +756,16 @@ sub trim_line
    my($line) = @_;
 
    return $line =~ /^(.*)$/ ? $1 : $line;
+}
+
+sub to_dot_num
+{
+   my($val) = @_;
+   return $val =~ s/\,/\./r;
+}
+
+sub max_num
+{
+   my($a, $b) = @_;
+   return $a < $b ? $b : $a;
 }
