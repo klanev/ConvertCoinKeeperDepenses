@@ -127,13 +127,20 @@ $res_fmt->set_align('left');
 
 $worksheet->write_row(0, 0, ["", "Дата", "Расходы, р.", "Примечание", "Дата", "Поступления, р.", "Примечание"], $bold_fmt);
 
+my $statistics = calc_statistics(\@depenses, \@incomes);
+
+for(@depenses)
+{
+   fix_depence_row($_);
+}
+
 write_xslx_log($depincs, $worksheet, 1, 0, \@depenses, 1, 2);
 
 write_xslx_log($depincs, $worksheet, 1, 4, \@incs, 0, 1);
 
 {
    my $row = max_num(scalar(@depenses), scalar(@incs)) + 1;
-   for(@{ calc_statistics(\@depenses, \@incomes) })
+   for(@$statistics)
    {
       $worksheet->write_row($row, 0, $_, $res_fmt);
 
@@ -792,5 +799,20 @@ sub write_xslx_log
       }
 
       ++$row;
+   }
+}
+
+sub fix_depence_row
+{
+   my($row) = @_;
+
+   if($row->[0] =~ /^(.*)\,([^\,]*)/)
+   {
+      $row->[0] = $1;
+      $row->[3] = $2;
+   }
+   else
+   {
+      $row->[3] = "";
    }
 }
