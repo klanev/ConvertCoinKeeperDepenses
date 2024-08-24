@@ -121,40 +121,15 @@ $worksheet->set_column(6, 6, 20);
  
 my $bold_fmt = $depincs->add_format();
 $bold_fmt->set_bold();
-my $num_fmt = $depincs->add_format();
-$num_fmt->set_align('left');
 my $res_fmt = $depincs->add_format();
 $res_fmt->set_bold();
 $res_fmt->set_align('left');
 
 $worksheet->write_row(0, 0, ["", "Дата", "Расходы, р.", "Примечание", "Дата", "Поступления, р.", "Примечание"], $bold_fmt);
-{
-   my $row = 1;
-   for(@depenses)
-   {
-      my @content = @{$_};
-      for my $col (0..1)
-      {
-         $worksheet->write($row, $col, $content[$col]);
-      }
-      $worksheet->write_number($row, 2, to_dot_num($content[2]), $num_fmt);
-      $worksheet->write($row, 3, $content[3]);
 
-      ++$row;
-   }
-}
-{
-   my $row = 1;
-   for(@incs)
-   {
-      my @content = @{$_};
-      $worksheet->write($row, 4, $content[0]);
-      $worksheet->write_number($row, 5, to_dot_num($content[1]), $num_fmt);
-      $worksheet->write($row, 6, $content[2]);
+write_xslx_log($depincs, $worksheet, 1, 0, \@depenses, 1, 2);
 
-      ++$row;
-   }
-}
+write_xslx_log($depincs, $worksheet, 1, 4, \@incs, 0, 1);
 
 {
    my $row = max_num(scalar(@depenses), scalar(@incs)) + 1;
@@ -338,6 +313,13 @@ sub split_date
    die "Invalid date format \"$date\"" unless ( $date =~ /^([0-9]{2,2})\.([0-9]{2,2})\.([0-9]{4,4})$/ );
 
    return [ $1, $2, $3 ];
+}
+
+sub convert_date_to_ISO8601
+{
+   my( $date ) = @_;
+
+   return sprintf("%04d-%02d-%02dT00:01", reverse @{ split_date($date) });
 }
 
 sub lex_compare
@@ -768,4 +750,47 @@ sub max_num
 {
    my($a, $b) = @_;
    return $a < $b ? $b : $a;
+}
+
+sub write_xslx_log
+{
+   my($dst_file, $dst_worksheet, $row, $col, $src, $src_date_col, $src_value_col) = @_;
+
+   my $num_fmt = $dst_file->add_format();
+   $num_fmt->set_align('left');
+
+   my $date_fmt = $dst_file->add_format();
+   $date_fmt->set_align('left');
+   $date_fmt->set_num_format('dd.mm');
+
+   my $cur_date = undef;
+
+   for(@$src)
+   {
+      my @content = @{$_};
+      
+      for my $src_col (0..$#content)
+      {
+         my $item = $content[$src_col];
+
+         if($src_col == $src_date_col)
+         {
+            if($item ne $cur_date)
+            {
+               $dst_worksheet->write_date_time($row, $col + $src_col, convert_date_to_ISO8601($item), $date_fmt);
+               $cur_date = $item;
+            }
+         }
+         elsif($src_col == $src_value_col)
+         {
+            $dst_worksheet->write_number($row, $col + $src_col, to_dot_num($item), $num_fmt);
+         }
+         else
+         {
+            $dst_worksheet->write($row, $col + $src_col, $item);
+         }
+      }
+
+      ++$row;
+   }
 }
