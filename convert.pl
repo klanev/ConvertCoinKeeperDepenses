@@ -364,7 +364,7 @@ sub calc_statistics
          { name => ""                              , tag => "Гриша",destinations => ["Здоровье"],        priority => 3, conditions => "all"  },
          { name => "Сумма (д/Саши)"                , tag => "Саша",                                      priority => 2 },
          { name => ""                              , tag => "Саша", destinations => ["Здоровье"],        priority => 3, conditions => "all"  },
-         { name => "Сумма (продукты взросл.)"      , destinations => ["Groceries", "Eating outside"] },
+         { name => "Сумма (продукты)"              , destinations => ["Groceries", "Eating outside"],    priority => 4 },
          { name => "Сумма (крузак)"                , tag => "TLCP" },
          { name => "Сумма (ШО)"                    , tag => "ШО" },
          { name => "Сумма (моб.)"                  , tag => "связь" },
