@@ -11,8 +11,8 @@ Win32::Console::OutputCP(65001);
 binmode(STDOUT, ":unix:utf8");
 
 my ( %params );
-( GetOptions( \%params, "output=s" , 'after=s', 'before=s', 'rus', 'squash-travel', 'skip-travel' ) && @ARGV == 1 )
-   || die "Usage: convert <coin keeper csv> [-after <start date>] [-before <end date>] [--rus] [--squash-travel] [--skip-travel]\n";
+( GetOptions( \%params, "output=s" , 'after=s', 'before=s', 'rus' ) && @ARGV == 1 )
+   || die "Usage: convert <coin keeper csv> [-after <start date>] [-before <end date>] [--rus]\n";
 
 my $input_file = $ARGV[0];
 
@@ -24,8 +24,6 @@ my @incomes;
 my @in_transfers;
 
 my $prev_cashback;
-my $travel_index;
-my $travel_sum;
 
 my %account_names = ("Кошелёк" => undef, "Зарплатная карта" => undef, "Кредитка" => undef, "Копилка" => undef, "ККБ" => undef, "Копилка (нал)" => undef, "Раффайзен (кредит ШО)" => undef, "Кукуруза" => undef, "ЕКП" => undef, "Лента А (оф)" => undef, "Лента А (копилка)" => undef, "Binance USDT" => undef, "Bankoff" => undef, "Бакай \$" => undef, "Бакай" => undef, "BSB \$" => undef, "BSB" => undef);
 
@@ -63,13 +61,6 @@ for my $item (@$input_data)
    {
       store_row(\@depenses, $item, \%account_names);
    }
-}
-
-if(defined $travel_index)
-{
-   my $travel_sum_ = $travel_sum;
-   $travel_sum_ =~  s/\./\,/g;
-   $depenses[$travel_index]->[2] = $travel_sum_;
 }
 
 my @cashbacks_1;
@@ -198,30 +189,6 @@ sub store_row
 
    die "Other currencies are not supported"
       if($currency_to ne 'RUB');
-
-   my $tags_travel = (grep { $_ eq 'отпуск' } split(/, */, $tags));
-   my $dest_travel = $to =~ /Отпуск/i;
-   if($tags_travel or $dest_travel)
-   {
-      if($params{'skip-travel'})
-      {
-         return;
-      }
-      elsif($params{'squash-travel'})
-      {
-         my $sum_ = $sum;
-         $sum_ =~ s/\,/\./g;
-         $travel_sum = $travel_sum + $sum_;
-
-         if(not defined $travel_index)
-         {
-            $travel_index = @$acc;
-            push @$acc, [ 'Отпуск', $item->{date}, '', '.отпуск', '' ];
-         }
-
-         return;
-      }
-   }
 
    my $index = @$acc + 2;
 
