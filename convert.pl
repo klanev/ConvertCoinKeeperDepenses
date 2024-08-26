@@ -11,8 +11,8 @@ Win32::Console::OutputCP(65001);
 binmode(STDOUT, ":unix:utf8");
 
 my ( %params );
-( GetOptions( \%params, "output=s" , 'after=s', 'before=s', 'rus', 'rate=s%', 'squash-travel', 'skip-travel', 'web-text', 'year=i' ) && @ARGV == 1 )
-   || die "Usage: convert <coin keeper csv> [-after <start date>] [-before <end date>] [--rus] [--rate <currency>=<rate>...] [--squash-travel] [--skip-travel] [--web-text] [--year <year of report for web text>]\n";
+( GetOptions( \%params, "output=s" , 'after=s', 'before=s', 'rus', 'rate=s%', 'squash-travel', 'skip-travel' ) && @ARGV == 1 )
+   || die "Usage: convert <coin keeper csv> [-after <start date>] [-before <end date>] [--rus] [--rate <currency>=<rate>...] [--squash-travel] [--skip-travel]\n";
 
 my $input_file = $ARGV[0];
 
@@ -31,7 +31,7 @@ my $travel_sum;
 
 my %account_names = ("Кошелёк" => undef, "Зарплатная карта" => undef, "Кредитка" => undef, "Копилка" => undef, "ККБ" => undef, "Копилка (нал)" => undef, "Раффайзен (кредит ШО)" => undef, "Кукуруза" => undef, "ЕКП" => undef, "Лента А (оф)" => undef, "Лента А (копилка)" => undef, "Binance USDT" => undef, "Bankoff" => undef, "Бакай \$" => undef, "Бакай" => undef, "BSB \$" => undef, "BSB" => undef);
 
-my $input_data = (not $params{'web-text'}) ? load_csv($input_file) : load_web_txt($input_file, $params{year});
+my $input_data = load_csv($input_file);
 
 for my $item (@$input_data)
 {
@@ -646,98 +646,6 @@ sub load_csv
    close( $in );
 
    return $res;
-}
-
-sub load_web_txt
-{
-   my($input_file, $year) = @_;
-
-   my @res;
-
-   my %months = (
-      "января" => 1,    "февраля" => 2,   "марта" => 3,  "апреля" => 4,
-      "мая" => 5,       "июня" => 6,      "июля" => 7,   "августа" => 8,
-      "сентября" => 9,  "октября" => 10,  "ноября" => 11,"декабря" => 12
-   );
-
-   my %incomes;
-   @incomes{'Income', 'от Евгении', 'Долг', 'от Лизы'} = ();
-
-   ($year = 1900 + (localtime)[5]) unless defined $year;
-
-   open(my $in, '<:encoding(UTF-8)', $input_file) or die "Can't open $input_file";
-
-   while(my $line = <$in>)
-   {
-      die "No day header found at $." unless $line =~ /^[А-ЯA-Z]+(\d+) (.*)$/;
-      my $day = $1;
-      my $month = $months{$2};
-      die "Wrong month \'$2\' at $." unless defined $month;
-
-      my $date = sprintf "%2.2d.%2.2d.%4.4d", $day, $month, $year;
-
-      my $ln = <$in>;
-
-      while(1)
-      {
-         my $from = trim_line($ln);
-
-         print "from = \'$from\'\n";
-
-         last if $from =~ /^(\$\s+)?([\−\-] )?\d/;
-
-         $ln = <$in>;
-
-         my $to = trim_line($ln);
-
-         $ln = <$in>;
-
-         die "Wrong sum (\'$ln\') at $." unless trim_line($ln) =~ /^(\$\x{200e}\s*)?(\d{1,3}( \d{3})*([\.\,]\d{2})?)(\x{200e}\s*\x{20bd})?$/;
-         my $sum = $2;
-         $sum =~ s/ //g;
-
-         my @tags;
-
-         $ln = <$in>;
-         if($ln =~ /^\#/)
-         {
-            @tags = map { die "Wrong tag \'$_\' at $." unless /^\#(.*)/; $1 } (split / /, $ln);
-
-            $ln = <$in>;
-         }
-
-         my $descr = trim_line($ln);
-         if((not exists $account_names{$descr}) and (not exists $incomes{$descr}) and (not ($descr =~ /^([\−\-] )?\d/)))
-         {
-            $ln = <$in>;
-         }
-         else
-         {
-            $descr = undef;
-         }
-
-         print "$date: '$from' -> '$to', sum=$sum, tags = ".join(' ', @tags).", descr = \'$descr\'\n";
-
-         push @res, {
-            date => $date,
-            type => (((exists $incomes{$from}) or (exists $account_names{$from})) and (exists $account_names{$to}) ? "Перевод" : "Расход"),
-            from => $from,
-            to => $to,
-            descr => $descr,
-            tags => join(', ', @tags),
-            sum => $sum,
-            currency_from => 'RUB',
-            currency_to => 'RUB' };
-      }
-
-      my $skip_ln = <$in>;
-      $skip_ln = <$in>;
-      $skip_ln = <$in>;
-   }
-
-   close($in);
-
-   return [reverse @res];
 }
 
 sub trim_line
