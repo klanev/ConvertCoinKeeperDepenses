@@ -11,15 +11,13 @@ Win32::Console::OutputCP(65001);
 binmode(STDOUT, ":unix:utf8");
 
 my ( %params );
-( GetOptions( \%params, "output=s" , 'after=s', 'before=s', 'rus', 'rate=s%', 'squash-travel', 'skip-travel' ) && @ARGV == 1 )
-   || die "Usage: convert <coin keeper csv> [-after <start date>] [-before <end date>] [--rus] [--rate <currency>=<rate>...] [--squash-travel] [--skip-travel]\n";
+( GetOptions( \%params, "output=s" , 'after=s', 'before=s', 'rus', 'squash-travel', 'skip-travel' ) && @ARGV == 1 )
+   || die "Usage: convert <coin keeper csv> [-after <start date>] [-before <end date>] [--rus] [--squash-travel] [--skip-travel]\n";
 
 my $input_file = $ARGV[0];
 
 my $after = $params{after};
 my $before = $params{before};
-
-my %rates = %{ $params{rate} or {} };
 
 my @depenses;
 my @incomes;
@@ -198,23 +196,8 @@ sub store_row
       $notes = $to.".".$tags;
    }
 
-   return
+   die "Other currencies are not supported"
       if($currency_to ne 'RUB');
-
-   if($currency_from ne 'RUB')
-   {
-      if($rates{$currency_from})
-      {
-         $sum =~ s/\,/\./g;
-         $descr = $descr."($sum $currency_from)";
-         $sum = $sum * $rates{$currency_from};
-         $sum =~ s/\./\,/g;
-      }
-      else
-      {
-         die "Currency($currency_from) rate is not set\n";
-      }
-   }
 
    my $tags_travel = (grep { $_ eq 'отпуск' } split(/, */, $tags));
    my $dest_travel = $to =~ /Отпуск/i;
