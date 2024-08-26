@@ -23,11 +23,9 @@ my @depenses;
 my @incomes;
 my @in_transfers;
 
-my %account_names = ("Кошелёк" => undef, "Зарплатная карта" => undef, "Кредитка" => undef, "Копилка" => undef, "ККБ" => undef, "Копилка (нал)" => undef, "Раффайзен (кредит ШО)" => undef, "Кукуруза" => undef, "ЕКП" => undef, "Лента А (оф)" => undef, "Лента А (копилка)" => undef, "Binance USDT" => undef, "Bankoff" => undef, "Бакай \$" => undef, "Бакай" => undef, "BSB \$" => undef, "BSB" => undef);
-
 my $input_data = load_csv($input_file);
 
-for my $item (@$input_data)
+for my $item (@{ $input_data->{log} })
 {
    my $date = $item->{date};
    my $type = $item->{type};
@@ -46,13 +44,13 @@ for my $item (@$input_data)
 
    if($type eq "Перевод")
    {
-      store_row(\@incomes, $item, \%account_names) if $from eq "Income";
+      store_row(\@incomes, $item, $input_data->{account_names}) if $from eq "Income";
       
-      store_row(\@in_transfers, $item, \%account_names) if $from eq "от Евгении";
+      store_row(\@in_transfers, $item, $input_data->{account_names}) if $from eq "от Евгении";
    }
    elsif($type eq "Расход")
    {
-      store_row(\@depenses, $item, \%account_names);
+      store_row(\@depenses, $item, $input_data->{account_names});
    }
 }
 
@@ -500,14 +498,15 @@ sub load_csv
 {
    my($input_file) = @_;
 
-   my $res = [];
+   my $log = [];
+   my $account_names = {};
 
    open( my $in, '<', $input_file ) or die "Can't open $input_file";
    binmode $in;
 
    my $csv_in = Text::CSV->new({ binary => 1, auto_diag => 1 });
 
-   while( my $columns = $csv_in->getline( $in ) )
+   while(my $columns = $csv_in->getline( $in ))
    {
       next if @$columns eq 2;
       next if $columns->[0] eq "Data";
@@ -524,7 +523,7 @@ sub load_csv
       my $currency_from = $columns->[6];
       my $currency_to = $columns->[8];
 
-      push @$res, {
+      push @$log, {
          date => $date,
          type => $type,
          from => $from,
@@ -536,9 +535,23 @@ sub load_csv
          currency_to => $currency_to };
    }
 
+   while(my $columns = $csv_in->getline( $in ))
+   {
+      next if @$columns == 0;
+   }
+
+   while(my $columns = $csv_in->getline( $in ))
+   {
+      next if $columns->[0] eq "Name";
+      next if $columns->[0] eq "Название";
+      last if 0 == @$columns;
+
+      $account_names->{$columns->[0]} = undef;
+   }
+
    close( $in );
 
-   return $res;
+   return { log => $log, account_names => $account_names };
 }
 
 sub trim_line
