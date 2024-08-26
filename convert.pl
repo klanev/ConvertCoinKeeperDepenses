@@ -64,12 +64,12 @@ my @incs = map { [$_->[1], $_->[2], $_->[0]] } @incomes;
 my $depincs = Excel::Writer::XLSX->new( 'depincs.xlsx' );
 die "Can't create output file" unless defined $depincs;
 
-my $worksheet = $depincs->add_worksheet();
-$worksheet->set_column(0, 0, 50);
-$worksheet->set_column(1, 2, 10);
-$worksheet->set_column(3, 3, 20);
-$worksheet->set_column(4, 4, 10);
-$worksheet->set_column(6, 6, 20);
+my $depenses_sheet = $depincs->add_worksheet("Расходы");
+$depenses_sheet->set_column(0, 0, 50);
+$depenses_sheet->set_column(1, 2, 10);
+$depenses_sheet->set_column(3, 3, 20);
+$depenses_sheet->set_column(4, 4, 10);
+$depenses_sheet->set_column(6, 6, 20);
  
 my $bold_fmt = $depincs->add_format();
 $bold_fmt->set_bold();
@@ -77,7 +77,7 @@ my $res_fmt = $depincs->add_format();
 $res_fmt->set_bold();
 $res_fmt->set_align('left');
 
-$worksheet->write_row(0, 0, ["", "Дата", "Расходы, р.", "Примечание", "Дата", "Поступления, р.", "Примечание"], $bold_fmt);
+$depenses_sheet->write_row(0, 0, ["", "Дата", "Расходы, р.", "Примечание", "Дата", "Поступления, р.", "Примечание"], $bold_fmt);
 
 my $statistics = calc_statistics(\@depenses, \@incomes);
 
@@ -86,24 +86,31 @@ for(@depenses)
    fix_depence_row($_);
 }
 
-write_xslx_log($depincs, $worksheet, 1, 0, \@depenses, 1, 2);
+write_xslx_log($depincs, $depenses_sheet, 1, 0, \@depenses, 1, 2);
 
-write_xslx_log($depincs, $worksheet, 1, 4, \@incs, 0, 1);
+write_xslx_log($depincs, $depenses_sheet, 1, 4, \@incs, 0, 1);
 
 {
    my $row = max_num(scalar(@depenses), scalar(@incs)) + 1;
    for(@$statistics)
    {
-      $worksheet->write_row($row, 0, $_, $res_fmt);
+      $depenses_sheet->write_row($row, 0, $_, $res_fmt);
 
       ++$row;
    }
 }
- 
-$depincs->close();
+
+my $in_transfers_sheet = $depincs->add_worksheet("Входящие транши");
+$in_transfers_sheet->set_column(0, 0, 50);
+$in_transfers_sheet->set_column(1, 2, 10);
 
 sort_depenses(\@in_transfers);
-write_out("in_transfers.txt", \@in_transfers);
+
+$in_transfers_sheet->write_row(0, 0, ["", "Дата", "Расходы, р.", "Примечание"], $bold_fmt);
+
+write_xslx_log($depincs, $in_transfers_sheet, 1, 0, \@in_transfers, 1, 2);
+ 
+$depincs->close();
 
 ###########################################################
 
@@ -177,22 +184,6 @@ sub sort_depenses
    my($data) = @_;
 
    @$data = sort { compare_date( $a->[1], $b->[1] ) } @$data;
-}
-
-sub write_out
-{
-   my( $output_file, $data ) = @_;
-   
-   my $csv_out = Text::CSV::Encoded->new( { encoding_out => "utf8", eol => "\r\n" } );
-
-   open( my $out, '>', $output_file ) or die "Can't create $output_file";
-
-   foreach( @$data )
-   {
-      $csv_out->print( $out, $_ );
-   }
-
-   close( $out );   
 }
 
 sub convert_date
