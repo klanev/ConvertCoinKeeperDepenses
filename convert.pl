@@ -23,8 +23,6 @@ my @depenses;
 my @incomes;
 my @in_transfers;
 
-my $prev_cashback;
-
 my %account_names = ("Кошелёк" => undef, "Зарплатная карта" => undef, "Кредитка" => undef, "Копилка" => undef, "ККБ" => undef, "Копилка (нал)" => undef, "Раффайзен (кредит ШО)" => undef, "Кукуруза" => undef, "ЕКП" => undef, "Лента А (оф)" => undef, "Лента А (копилка)" => undef, "Binance USDT" => undef, "Bankoff" => undef, "Бакай \$" => undef, "Бакай" => undef, "BSB \$" => undef, "BSB" => undef);
 
 my $input_data = load_csv($input_file);
@@ -44,12 +42,7 @@ for my $item (@$input_data)
    next if ($to eq "Мое") || ($to eq "Мое (\$)") || ($descr =~ /\(скрыть\)/) || ($from eq "Income" and $to eq "Копилка");
    next if $to eq "Неучтенные";
 
-   if($from eq "Income" and $descr =~ /^кешбек/i)
-   {
-      $prev_cashback = $item->{sum};
-
-      next;
-   }
+   next if($from eq "Income" and $descr =~ /^кешбек/i);
 
    if($type eq "Перевод")
    {
@@ -63,35 +56,7 @@ for my $item (@$input_data)
    }
 }
 
-my @cashbacks_1;
-my @cashbacks_5_10;
-my @cb_depenses;
 my $index = 2;
-
-for my $row (@depenses)
-{
-   my $cashback = $row->[4];
-   if($cashback ne "")
-   {
-      my $cb_percent = "H$index";
-      my $dep = "(C$index/(100%-$cb_percent))";
-
-      push @cb_depenses, $dep;
-
-      my $cashback_val = "$dep*$cb_percent";
-
-      if($cashback == "1%")
-      {
-         push @cashbacks_1, $cashback_val;
-      }
-      else
-      {
-         push @cashbacks_5_10, $cashback_val;
-      }     
-   }
-
-   $index = $index + 1;
-}
 
 sort_depenses(\@depenses);
 
@@ -192,28 +157,6 @@ sub store_row
 
    my $index = @$acc + 2;
 
-   my $cashback;
-   if($from eq 'ККБ' and $to ne 'Евгении' and not ($tags =~ "не в сумме трат ККБ"))
-   {
-      $cashback = '1%';
-
-      if(($descr =~ /Бензин/i) || ($descr =~ /Солярка/i) || ($tags =~ "10\%"))
-      {
-         $cashback = '10%';
-      }
-      elsif($descr =~ /Обед/i || ($descr =~ /Кофе/i) || ($tags =~ "5\%"))
-      {
-         $cashback = '5%';
-      }
-      elsif($tags =~ "0\%")
-      {
-         $cashback = '0%';
-      }
-
-      my $cb_percent = "H$index";
-      $sum = "=$sum*(100%-$cb_percent)";
-   }
-
    if($to eq 'Евгении')
    {
       if($descr eq '')
@@ -228,7 +171,7 @@ sub store_row
 
    $descr =~ s/[\r\n]/ /g;
 
-   push @$acc, [ $descr, $item->{date}, $sum, $notes, $cashback ];
+   push @$acc, [ $descr, $item->{date}, $sum, $notes ];
 }
 
 sub sort_depenses
