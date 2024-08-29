@@ -44,22 +44,21 @@ for my $item (@{ $input_data->{log} })
 
    if($type eq "Перевод")
    {
-      store_row(\@incomes, $item, $input_data->{account_names}) if $from eq "Income";
+      (push @incomes, $item) if $from eq "Income";
       
-      store_row(\@in_transfers, $item, $input_data->{account_names}) if $from eq "от Евгении";
+      (push @in_transfers, $item) if $from eq "от Евгении";
    }
    elsif($type eq "Расход")
    {
-      store_row(\@depenses, $item, $input_data->{account_names});
+      push @depenses, $item;
    }
 }
 
 my $index = 2;
 
-sort_depenses(\@depenses);
+sort_log(\@depenses);
 
-sort_depenses(\@incomes);
-my @incs = map { [$_->[1], $_->[2], $_->[0]] } @incomes;
+sort_log(\@incomes);
 
 my $depincs = Excel::Writer::XLSX->new( 'depincs.xlsx' );
 die "Can't create output file" unless defined $depincs;
@@ -81,17 +80,12 @@ $depenses_sheet->write_row(0, 0, ["", "Дата", "Расходы, р.", "При
 
 my $statistics = calc_statistics(\@depenses, \@incomes);
 
-for(@depenses)
-{
-   fix_depence_row($_);
-}
+write_xslx_log($depincs, $depenses_sheet, 1, 0, \@depenses, [\&create_descr, 'date', 'sum', \&create_notes]);
 
-write_xslx_log($depincs, $depenses_sheet, 1, 0, \@depenses, 1, 2);
-
-write_xslx_log($depincs, $depenses_sheet, 1, 4, \@incs, 0, 1);
+write_xslx_log($depincs, $depenses_sheet, 1, 4, \@incomes, ['date', 'sum', 'descr']);
 
 {
-   my $row = max_num(scalar(@depenses), scalar(@incs)) + 1;
+   my $row = max_num(scalar(@depenses), scalar(@incomes)) + 1;
    for(@$statistics)
    {
       $depenses_sheet->write_row($row, 0, $_, $res_fmt);
@@ -104,11 +98,11 @@ my $in_transfers_sheet = $depincs->add_worksheet("Входящие транши"
 $in_transfers_sheet->set_column(0, 0, 50);
 $in_transfers_sheet->set_column(1, 2, 10);
 
-sort_depenses(\@in_transfers);
+sort_log(\@in_transfers);
 
 $in_transfers_sheet->write_row(0, 0, ["", "Дата", "Расходы, р.", "Примечание"], $bold_fmt);
 
-write_xslx_log($depincs, $in_transfers_sheet, 1, 0, \@in_transfers, 1, 2);
+write_xslx_log($depincs, $in_transfers_sheet, 1, 0, \@in_transfers, ['descr', 'date', 'sum']);
  
 $depincs->close();
 
@@ -130,60 +124,11 @@ sub min
 
 ###########################################################
 
-sub store_row
-{
-   my( $acc, $item, $account_names ) = @_;
-   
-   my $from = $item->{from};
-   my $descr = $item->{descr};
-   my $to = $item->{to};
-   my $tags = $item->{tags};
-   my $sum = $item->{sum};
-   my $currency_from = $item->{currency_from};
-   my $currency_to = $item->{currency_to};
-
-   my $notes;
-
-   if(($to eq "") || (exists $account_names->{$to}))
-   {
-      $notes = $tags;
-   }
-   elsif($tags eq "")
-   {
-      $notes = $to;
-   }
-   else
-   {
-      $notes = $to.".".$tags;
-   }
-
-   die "Other currencies are not supported"
-      if($currency_to ne 'RUB');
-
-   my $index = @$acc + 2;
-
-   if($to eq 'Евгении')
-   {
-      if($descr eq '')
-      {
-         $descr = 'Транш';
-      }
-      else
-      {
-         $descr = "Транш ($descr)";
-      }
-   }
-
-   $descr =~ s/[\r\n]/ /g;
-
-   push @$acc, [ $descr, $item->{date}, $sum, $notes ];
-}
-
-sub sort_depenses
+sub sort_log
 {
    my($data) = @_;
 
-   @$data = sort { compare_date( $a->[1], $b->[1] ) } @$data;
+   @$data = sort { compare_date( $a->{date}, $b->{date} ) } @$data;
 }
 
 sub convert_date
@@ -308,26 +253,12 @@ sub dep_index_to_ref
    return "C".($index + 2);
 }
 
-sub parse_dep_notes
-{
-   my($line) = @_;
-
-   my $notes = $line->[3];
-   ($notes =~ /^([^\.]*)(\.(.*))?$/) or die "Failed to parse notes";
-   my $to = $1;
-   my $tags = $3;
-   my @tags = split /, */, $tags;
-
-   return { to => $to, tags => \@tags };
-}
-
 sub create_stat_by_destinations
 {
    my($depenses, $tos) = @_;
 
    my @indexes = grep {
-         my $line = $depenses->[$_];
-         my $info = parse_dep_notes($line);
+         my $info = $depenses->[$_];
 
          find_in_array($info->{to}, $tos);
       } (0..$#$depenses);
@@ -351,7 +282,7 @@ sub create_partitions
 
    foreach my $index (0..$#$depenses)
    {
-      my $depense_info = parse_dep_notes($depenses->[$index]);
+      my $depense_info = $depenses->[$index];
 
       my @partitions_fit_indexes = grep { is_depense_fits_partition($depense_info, $scheme->[$_]) } (0..$#$scheme);
 
@@ -520,7 +451,7 @@ sub load_csv
          from => $from,
          to => $to,
          descr => $descr,
-         tags => $tags,
+         tags => [split /, */, $tags],
          sum => $sum,
          currency_from => $currency_from,
          currency_to => $currency_to };
@@ -566,7 +497,7 @@ sub max_num
 
 sub write_xslx_log
 {
-   my($dst_file, $dst_worksheet, $row, $col, $src, $src_date_col, $src_value_col) = @_;
+   my($dst_file, $dst_worksheet, $row, $col, $src_log, $fields) = @_;
 
    my $num_fmt = $dst_file->add_format();
    $num_fmt->set_align('left');
@@ -577,15 +508,27 @@ sub write_xslx_log
 
    my $cur_date = undef;
 
-   for(@$src)
+   for my $log_item (@$src_log)
    {
-      my @content = @{$_};
-      
-      for my $src_col (0..$#content)
-      {
-         my $item = $content[$src_col];
+      my $src_col = 0;
 
-         if($src_col == $src_date_col)
+      for my $field (@$fields)
+      {
+         my $item;
+         if(ref($field) eq '')
+         {
+            $item = $log_item->{$field};
+         }
+         elsif(ref($field) eq 'CODE')
+         {
+            $item = $field->($log_item);
+         }
+         else
+         {
+            die "Unknown field format: ".ref $field;
+         }
+
+         if($field eq 'date')
          {
             if($item ne $cur_date)
             {
@@ -593,7 +536,7 @@ sub write_xslx_log
                $cur_date = $item;
             }
          }
-         elsif($src_col == $src_value_col)
+         elsif($field eq 'sum')
          {
             $dst_worksheet->write_number($row, $col + $src_col, to_dot_num($item), $num_fmt);
          }
@@ -601,23 +544,38 @@ sub write_xslx_log
          {
             $dst_worksheet->write($row, $col + $src_col, $item);
          }
+
+         ++$src_col;
       }
 
       ++$row;
    }
 }
 
-sub fix_depence_row
+sub create_descr
 {
-   my($row) = @_;
+   my($item) = @_;
 
-   if($row->[0] =~ /^(.*)\,([^\,]*)/)
+   if(($item->{descr}) =~ /^(.*)\,([^\,]*)/)
    {
-      $row->[0] = $1;
-      $row->[3] = $2;
+      return $1;
    }
    else
    {
-      $row->[3] = "";
+      return $item->{descr};
+   }
+}
+
+sub create_notes
+{
+   my($item) = @_;
+
+   if(($item->{descr}) =~ /^(.*)\,([^\,]*)/)
+   {
+      return $2;
+   }
+   else
+   {
+      return "";
    }
 }
