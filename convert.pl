@@ -510,6 +510,8 @@ sub write_xslx_log
 
    for my $log_item (@$src_log)
    {
+      die "Cannot process other currencies(".$log_item->{currency_from}.") at ".$log_item->{date}.".\n" unless $log_item->{currency_from} eq "RUB";
+
       my $src_col = 0;
 
       for my $field (@$fields)
