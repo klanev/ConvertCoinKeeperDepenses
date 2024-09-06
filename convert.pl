@@ -1,6 +1,7 @@
 ﻿BEGIN { push @INC, '.'; }
 use Text::CSV::Encoded;
 use Excel::Writer::XLSX;
+use Excel::Writer::XLSX::Utility;
 use Getopt::Long;
 use Encode;
 use utf8;
@@ -9,6 +10,11 @@ use strict;
 use Win32::Console;
 Win32::Console::OutputCP(65001);
 binmode(STDOUT, ":unix:utf8");
+
+my $currency_info = {
+      "RUB" => { alias => "р.", priority => 0 },
+      "USD" => { alias => "\$", priority => 1 }
+   };
 
 my ( %params );
 ( GetOptions( \%params, "output=s" , 'after=s', 'before=s', 'rus' ) && @ARGV == 1 )
@@ -52,47 +58,51 @@ for my $item (@{ $input_data->{log} })
    {
       push @depenses, $item;
    }
+   else
+   {
+      die "Unknown type: $type";
+   }
 }
-
-my $index = 2;
 
 sort_log(\@depenses);
 
 sort_log(\@incomes);
 
+my @currencies = keys %{ { (map { $_->{currency_from} => undef, $_->{currency_to} => undef } @depenses) } };
+@currencies = sort { compare_currencies($a, $b) } @currencies;
+print "Currencies:\"".join('", "', @currencies)."\"\n";
+
 my $depincs = Excel::Writer::XLSX->new( 'depincs.xlsx' );
 die "Can't create output file" unless defined $depincs;
 
+my $dep_cols = @currencies * get_statictics_columns_count() - 1;
+
 my $depenses_sheet = $depincs->add_worksheet("Расходы");
 $depenses_sheet->set_column(0, 0, 50);
-$depenses_sheet->set_column(1, 2, 10);
-$depenses_sheet->set_column(3, 3, 20);
-$depenses_sheet->set_column(4, 4, 10);
-$depenses_sheet->set_column(6, 6, 20);
+$depenses_sheet->set_column(1, 1 + $dep_cols, 10);
+$depenses_sheet->set_column(2 + $dep_cols, 2 + $dep_cols, 20);
+$depenses_sheet->set_column(3 + $dep_cols, 5 + $dep_cols, 10);
+$depenses_sheet->set_column(6 + $dep_cols, 6 + $dep_cols, 20);
  
 my $bold_fmt = $depincs->add_format();
 $bold_fmt->set_bold();
-my $res_fmt = $depincs->add_format();
-$res_fmt->set_bold();
-$res_fmt->set_align('left');
 
-$depenses_sheet->write_row(0, 0, ["", "Дата", "Расходы, р.", "Примечание", "Дата", "Поступления, р.", "Примечание"], $bold_fmt);
+$depenses_sheet->write_row(
+   0, 0,
+   ["", "Дата", @{create_depense_header(\@currencies, get_statictics_columns_count())}, "Примечание", "Дата", "Поступления, р.", "Примечание"],
+   $bold_fmt);
 
-my $statistics = calc_statistics(\@depenses, \@incomes);
+write_xslx_log($depincs, $depenses_sheet, 1, 0, \@depenses, 
+   [
+      { getter => \&create_descr, type => '' },
+      'date',
+      { getter => (sub { return create_depense(@_, \@currencies, get_statictics_columns_count()); }), type => 'sum' },
+      { getter => \&create_notes, type => '' }
+   ]);
 
-write_xslx_log($depincs, $depenses_sheet, 1, 0, \@depenses, [\&create_descr, 'date', 'sum', \&create_notes]);
+write_xslx_log($depincs, $depenses_sheet, 1, 3 + $dep_cols, \@incomes, ['date', 'sum_from', 'descr']);
 
-write_xslx_log($depincs, $depenses_sheet, 1, 4, \@incomes, ['date', 'sum', 'descr']);
-
-{
-   my $row = max_num(scalar(@depenses), scalar(@incomes)) + 1;
-   for(@$statistics)
-   {
-      $depenses_sheet->write_row($row, 0, $_, $res_fmt);
-
-      ++$row;
-   }
-}
+write_statistics($depincs, $depenses_sheet, \@depenses, \@incomes, \@currencies);
 
 my $in_transfers_sheet = $depincs->add_worksheet("Входящие транши");
 $in_transfers_sheet->set_column(0, 0, 50);
@@ -102,9 +112,11 @@ sort_log(\@in_transfers);
 
 $in_transfers_sheet->write_row(0, 0, ["", "Дата", "Расходы, р.", "Примечание"], $bold_fmt);
 
-write_xslx_log($depincs, $in_transfers_sheet, 1, 0, \@in_transfers, ['descr', 'date', 'sum']);
+write_xslx_log($depincs, $in_transfers_sheet, 1, 0, \@in_transfers, ['descr', 'date', 'sum_from']);
  
 $depincs->close();
+
+exit 0;
 
 ###########################################################
 
@@ -179,14 +191,84 @@ sub compare_date
    return lex_compare( [ reverse @{ split_date( $a ) } ], [ reverse @{ split_date( $b ) } ] );
 }
 
+sub get_currency_priority
+{
+   my($id) = @_;
+
+   my $info = $currency_info->{$id};
+
+   return defined($info) ? $info->{priority} : 1000;
+}
+
+sub get_currency_name
+{
+   my($id) = @_;
+
+   my $info = $currency_info->{$id};
+
+   return defined($info) ? $info->{alias} : $id;
+}
+
+sub compare_currencies
+{
+   my($l, $r) = @_;
+
+   my $l_prio = get_currency_priority($l);
+   my $r_prio = get_currency_priority($r);
+
+   return -1 if $l_prio < $r_prio;
+   return 1 if $l_prio > $r_prio;
+   return $l cmp $r;
+}
+
 #################################################
 
-sub calc_statistics
+sub write_statistics
 {
-   my($depenses, $incomes) = @_;
+   my($depincs, $depenses_sheet, $depenses, $incomes, $currencies) = @_;
+
+   my $res_fmt = $depincs->add_format();
+   $res_fmt->set_bold();
+   $res_fmt->set_align('left');
+
+   my $start_row = 1 + max(scalar(@$depenses), scalar(@$incomes));
+
+   my $depense_stats = calc_depence_statistics($depenses, $start_row, $currencies);
+   write_rows($depincs, $depenses_sheet, $start_row, 0, $depense_stats, $res_fmt);
+
+   for my $row(@$depense_stats)
+   {
+      print "\"".join("\", \"", @$row)."\"\n";
+   }   
+
+   my $incomes_stats = calc_income_statistics($incomes, $start_row, $currencies);
+   write_rows($depincs, $depenses_sheet, $start_row, 2 + (scalar(@currencies) * get_statictics_columns_count()), $incomes_stats, $res_fmt);
+}
+
+sub write_rows
+{
+   my($depincs, $depenses_sheet, $row, $col, $rows, $fmt) = @_;
+
+   for(@$rows)
+   {
+      $depenses_sheet->write_row($row, $col, $_, $fmt);
+
+      ++$row;
+   }
+}
+
+sub get_statictics_columns_count
+{
+   return 2;
+}
+
+sub calc_depence_statistics
+{
+   my($depenses, $row, $currencies) = @_;
 
    my $dep_len = @$depenses;
-   my $inc_len = @$incomes;
+
+   my $col = 2;
 
    my $partitions = create_partitions(
       $depenses,
@@ -215,14 +297,16 @@ sub calc_statistics
          { name => "Сумма (\"Водолей-2\")"         , tag => "Водолей-2" },
          { name => "Сумма (\"Колумб\")"            , tag => "Колумб" },
          { name => "Сумма (отпуск)"                , tag => "отпуск" }
-      ] );
+      ],
+      $currencies->[0]);
+
 
    if($partitions->[$#$partitions - 1]->[2] eq '0') # remove Vacation line if empty
    {
       splice @$partitions, $#$partitions - 1, 1;
    }
 
-   my $stat_line = $dep_len + 3;
+   my $stat_line = $row + 1;
    my $sum_without_transh_line   = $stat_line + 1;
    my $sum_child_line_first      = $sum_without_transh_line + 2;
    my $sum_child_line_last       = $sum_child_line_first + 2;
@@ -234,36 +318,60 @@ sub calc_statistics
    my $sum_other_immovable_last  = $sum_other_immovable_first + 2;
 
    my $res = [
-      ["", "", "", ""],
-      ["Сумма", "", "=".get_sum(\%params)."(C2:C".($dep_len + 1).")", "", "Сумма", "=".get_sum(\%params)."(F2:F".($inc_len + 1).")"],
-      ["В т.ч. б/\"траншей\"", "", "=C$stat_line-".create_stat_by_destinations($depenses, ["Евгении"])],
-      ["Сумма б/\"траншей\"-недвиж.-TLCP-медицина-ШО", "", "=C$sum_without_transh_line-C$sum_flat_line-SUM(C$sum_other_immovable_first:C$sum_other_immovable_last)-C$sum_car_tlcp_line-C$sum_medicine_line-SUM(D$sum_child_line_first:D$sum_child_line_last)-C$sum_car_sho_line"],
+      [],
+      ["Сумма", "", "=".get_sum(\%params)."(".xl_rowcol_to_cell(1, $col).":".xl_rowcol_to_cell($dep_len, $col).")"],
+      ["В т.ч. б/\"траншей\"", "", "=".xl_rowcol_to_cell($stat_line, $col)."-".create_stat_by_destinations($depenses, ["Евгении"], $currencies->[0])],
+      ["Сумма б/\"траншей\"-недвиж.-TLCP-медицина-ШО", "",
+         "=".xl_rowcol_to_cell($sum_without_transh_line, $col).
+         "-".xl_rowcol_to_cell($sum_flat_line, $col).
+         "-".get_sum(\%params)."(".
+            xl_rowcol_to_cell($sum_other_immovable_first, $col).":".xl_rowcol_to_cell($sum_other_immovable_last, $col).")".
+         "-".xl_rowcol_to_cell($sum_car_tlcp_line, $col).
+         "-".xl_rowcol_to_cell($sum_medicine_line, $col).
+         "-".get_sum(\%params)."(".
+            xl_rowcol_to_cell($sum_child_line_first, $col + 1).":".xl_rowcol_to_cell($sum_child_line_last, $col + 1).")".
+         "-".xl_rowcol_to_cell($sum_car_sho_line, $col)],
       @$partitions
    ];
 
-   push @{ $res->[$#$res] }, "=C$sum_without_transh_line-".get_sum(\%params)."(C".($sum_without_transh_line + 2).":D".(($sum_without_transh_line + 2) + (@$partitions - 1) - 1).")";
+   push @{ $res->[$#$res] },
+      "=".xl_rowcol_to_cell($sum_without_transh_line, $col).
+      "-".get_sum(\%params)."(".
+         xl_rowcol_to_cell($sum_without_transh_line + 2, $col).":".xl_rowcol_to_cell(($sum_without_transh_line + 2) + (@$partitions - 1) - 1, $col + 1).")";
 
    return $res;
 }
 
-sub dep_index_to_ref
+sub calc_income_statistics
 {
-   my($index) = @_;
+   my($incomes, $row, $currencies) = @_;
 
-   return "C".($index + 2);
+   my $inc_len = @$incomes;
+
+   my $col = 3 + (scalar(@currencies) * get_statictics_columns_count());
+
+   my $res = [
+      [],
+      ["Сумма", "=".get_sum(\%params)."(".
+         xl_rowcol_to_cell(1, $col).":".xl_rowcol_to_cell($inc_len, $col).")"]
+   ];
+
+   return $res;
 }
 
 sub create_stat_by_destinations
 {
-   my($depenses, $tos) = @_;
+   my($depenses, $tos, $currency) = @_;
 
    my @indexes = grep {
          my $info = $depenses->[$_];
 
-         find_in_array($info->{to}, $tos);
+         ($info->{currency_from} eq $currency) && find_in_array($info->{to}, $tos);
       } (0..$#$depenses);
 
-   return get_sum(\%params)."(".join(',', map { dep_index_to_ref($_) } @indexes).")";
+   my $cells = join(',', map { xl_rowcol_to_cell($_ + 1, 2) } @indexes);
+
+   return $cells ne "" ? get_sum(\%params)."($cells)" : 0;
 }
 
 sub find_in_array
@@ -275,7 +383,7 @@ sub find_in_array
 
 sub create_partitions
 {
-   my($depenses, $scheme) = @_;
+   my($depenses, $scheme, $currency) = @_;
 
    my @scheme_parts = map { [] } @$scheme;
    my $other_parts = [];
@@ -283,6 +391,8 @@ sub create_partitions
    foreach my $index (0..$#$depenses)
    {
       my $depense_info = $depenses->[$index];
+
+      next if $depense_info->{currency_from} ne $currency;
 
       my @partitions_fit_indexes = grep { is_depense_fits_partition($depense_info, $scheme->[$_]) } (0..$#$scheme);
 
@@ -294,7 +404,7 @@ sub create_partitions
 
       my $concurrency_factor = @partitions_fit_indexes;
 
-      my $part = dep_index_to_ref($index).($concurrency_factor > 1 ? "/".$concurrency_factor : "");
+      my $part = xl_rowcol_to_cell($index + 1, 2).($concurrency_factor > 1 ? "/".$concurrency_factor : "");
 
       foreach(@partitions_fit_indexes)
       {
@@ -441,8 +551,9 @@ sub load_csv
       my $to = $columns->[3];
       my $descr = $columns->[10];
       my $tags = $columns->[4];
-      my $sum = $columns->[5];
+      my $sum_from = $columns->[5];
       my $currency_from = $columns->[6];
+      my $sum_to = $columns->[7];
       my $currency_to = $columns->[8];
 
       push @$log, {
@@ -452,7 +563,8 @@ sub load_csv
          to => $to,
          descr => $descr,
          tags => [split /, */, $tags],
-         sum => $sum,
+         sum_from => $sum_from,
+         sum_to => $sum_to,
          currency_from => $currency_from,
          currency_to => $currency_to };
    }
@@ -510,44 +622,66 @@ sub write_xslx_log
 
    for my $log_item (@$src_log)
    {
-      die "Cannot process other currencies(".$log_item->{currency_from}.") at ".$log_item->{date}.".\n" unless $log_item->{currency_from} eq "RUB";
-
-      my $src_col = 0;
+      my $src_col = -1;
 
       for my $field (@$fields)
       {
-         my $item;
+         my $value;
+         my $type;
          if(ref($field) eq '')
          {
-            $item = $log_item->{$field};
+            $value = $log_item->{$field};
+            $type = $field;
          }
-         elsif(ref($field) eq 'CODE')
+         elsif(ref($field) eq 'HASH')
          {
-            $item = $field->($log_item);
+            $value = $field->{getter}->($log_item);
+            $type = $field->{type};
          }
          else
          {
             die "Unknown field format: ".ref $field;
          }
 
-         if($field eq 'date')
+         my @values;
+         if(ref($value) eq '')
          {
-            if($item ne $cur_date)
-            {
-               $dst_worksheet->write_date_time($row, $col + $src_col, convert_date_to_ISO8601($item), $date_fmt);
-               $cur_date = $item;
-            }
+            @values = ($value);
          }
-         elsif($field eq 'sum')
+         elsif(ref($value) eq 'ARRAY')
          {
-            $dst_worksheet->write_number($row, $col + $src_col, to_dot_num($item), $num_fmt);
+            @values = (@$value);
          }
          else
          {
-            $dst_worksheet->write($row, $col + $src_col, $item);
+            die "Value of unknown type extracted: ".ref $value;
          }
 
-         ++$src_col;
+         for my $val(@values)
+         {
+            ++$src_col;
+
+            next unless defined $val;
+
+            if($type eq 'date')
+            {
+               die "Multiple dates not supported" unless 1 == @values;
+
+               if($val ne $cur_date)
+               {
+                  $dst_worksheet->write_date_time($row, $col + $src_col, convert_date_to_ISO8601($val), $date_fmt);
+                  $cur_date = $val;
+               }
+            }
+            elsif($type =~ /^sum/)
+            {
+               $dst_worksheet->write_number($row, $col + $src_col, to_dot_num($val), $num_fmt);
+            }
+            else
+            {
+               $dst_worksheet->write($row, $col + $src_col, $val);
+            }
+         }
       }
 
       ++$row;
@@ -580,4 +714,52 @@ sub create_notes
    {
       return "";
    }
+}
+
+sub get_currency_index
+{
+   my($currency, $currencies) = @_;
+
+   my $index = -1;
+
+   for(@$currencies)
+   {
+      ++$index;
+
+      last if $_ eq $currency;
+   }
+
+   return $index;
+}
+
+sub create_depense
+{
+   my($item, $currencies, $stat_col_count) = @_;
+
+   my $result = [(undef) x (scalar(@$currencies) * $stat_col_count - 1)];
+
+   if($item->{type} eq "Расход")
+   {
+      my $from_index = get_currency_index($item->{currency_from}, $currencies);
+      die "Wrong currency_from" unless $from_index != -1;
+
+      $result->[$from_index * $stat_col_count] = $item->{sum_from};
+   }
+   else
+   {
+      die;
+   }
+
+   return $result;
+}
+
+sub create_depense_header
+{
+   my($currencies, $stat_col_count) = @_;
+
+   my $result = [map { "Расходы, ".get_currency_name($_), (undef) x ($stat_col_count - 1) } @$currencies];
+
+   pop @$result;
+
+   return $result;
 }
