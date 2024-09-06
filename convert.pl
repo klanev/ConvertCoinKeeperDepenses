@@ -369,9 +369,7 @@ sub create_stat_by_destinations
          ($info->{currency_from} eq $currency) && find_in_array($info->{to}, $tos);
       } (0..$#$depenses);
 
-   my $cells = join(',', map { xl_rowcol_to_cell($_ + 1, 2) } @indexes);
-
-   return $cells ne "" ? get_sum(\%params)."($cells)" : 0;
+   return create_sum_of_parts([map { xl_rowcol_to_cell($_ + 1, 2) } @indexes]);
 }
 
 sub find_in_array
@@ -419,11 +417,11 @@ sub create_partitions
 
    my $partitions = [
       (map {
-         [ $scheme->[$_]->{name}, "", create_sum_of_parts($scheme_parts[$_]) ]
+         [ $scheme->[$_]->{name}, "", "=".create_sum_of_parts($scheme_parts[$_]) ]
       } grep {
          defined $scheme->[$_]->{name}
       } (0..$#$scheme)),
-      [ "Сумма (остальное)", "", create_sum_of_parts($other_parts)]
+      [ "Сумма (остальное)", "", "=".create_sum_of_parts($other_parts)]
    ];
 
 
@@ -478,7 +476,7 @@ sub create_sum_of_parts
 {
    my($parts) = @_;
 
-   return @$parts != 0 ? "=".get_sum(\%params)."(".join(',', @$parts).")" : "0";
+   return @$parts != 0 ? get_sum(\%params)."(".join(',', @$parts).")" : "0";
 }
 
 sub get_priority
