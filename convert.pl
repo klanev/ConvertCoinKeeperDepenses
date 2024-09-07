@@ -233,13 +233,32 @@ sub write_statistics
 
    my $start_row = 1 + max(scalar(@$depenses), scalar(@$incomes));
 
-   my $depense_stats = calc_depence_statistics($depenses, $start_row, $currencies);
-   write_rows($depincs, $depenses_sheet, $start_row, 0, $depense_stats, $res_fmt);
-
-   for my $row(@$depense_stats)
+   for my $currency_index(0..$#$currencies)
    {
-      print "\"".join("\", \"", @$row)."\"\n";
-   }   
+      my $depense_col = 2 + $currency_index * get_statictics_columns_count();
+      my $depense_stats = calc_depence_statistics($depenses, $start_row, $currencies->[$currency_index], $depense_col);
+
+      write_rows(
+         $depincs,
+         $depenses_sheet,
+         $start_row,
+         0,
+         [map { [$_->[0]] } @$depense_stats],
+         $res_fmt);
+
+      write_rows(
+         $depincs,
+         $depenses_sheet,
+         $start_row,
+         $depense_col,
+         [map { [@$_[2..$#$_]] } @$depense_stats],
+         $res_fmt);
+
+      for my $row(@$depense_stats)
+      {
+         print "\"".join("\", \"", @$row)."\"\n";
+      }
+   }
 
    my $incomes_stats = calc_income_statistics($incomes, $start_row, $currencies);
    write_rows($depincs, $depenses_sheet, $start_row, 2 + (scalar(@currencies) * get_statictics_columns_count()), $incomes_stats, $res_fmt);
@@ -264,11 +283,9 @@ sub get_statictics_columns_count
 
 sub calc_depence_statistics
 {
-   my($depenses, $row, $currencies) = @_;
+   my($depenses, $row, $currency, $col) = @_;
 
    my $dep_len = @$depenses;
-
-   my $col = 2;
 
    my $partitions = create_partitions(
       $depenses,
@@ -298,10 +315,11 @@ sub calc_depence_statistics
          { name => "Сумма (\"Колумб\")"            , tag => "Колумб" },
          { name => "Сумма (отпуск)"                , tag => "отпуск" }
       ],
-      $currencies->[0]);
+      $currency,
+      $col);
 
 
-   if($partitions->[$#$partitions - 1]->[2] eq '0') # remove Vacation line if empty
+   if($partitions->[$#$partitions - 1]->[$col] eq '0') # remove Vacation line if empty
    {
       splice @$partitions, $#$partitions - 1, 1;
    }
@@ -320,7 +338,7 @@ sub calc_depence_statistics
    my $res = [
       [],
       ["Сумма", "", "=".get_sum(\%params)."(".xl_rowcol_to_cell(1, $col).":".xl_rowcol_to_cell($dep_len, $col).")"],
-      ["В т.ч. б/\"траншей\"", "", "=".xl_rowcol_to_cell($stat_line, $col)."-".create_stat_by_destinations($depenses, ["Евгении"], $currencies->[0])],
+      ["В т.ч. б/\"траншей\"", "", "=".xl_rowcol_to_cell($stat_line, $col)."-".create_stat_by_destinations($depenses, ["Евгении"], $currency, $col)],
       ["Сумма б/\"траншей\"-недвиж.-TLCP-медицина-ШО", "",
          "=".xl_rowcol_to_cell($sum_without_transh_line, $col).
          "-".xl_rowcol_to_cell($sum_flat_line, $col).
@@ -361,7 +379,7 @@ sub calc_income_statistics
 
 sub create_stat_by_destinations
 {
-   my($depenses, $tos, $currency) = @_;
+   my($depenses, $tos, $currency, $col) = @_;
 
    my @indexes = grep {
          my $info = $depenses->[$_];
@@ -369,7 +387,7 @@ sub create_stat_by_destinations
          ($info->{currency_from} eq $currency) && find_in_array($info->{to}, $tos);
       } (0..$#$depenses);
 
-   return create_sum_of_parts([map { xl_rowcol_to_cell($_ + 1, 2) } @indexes]);
+   return create_sum_of_parts([map { xl_rowcol_to_cell($_ + 1, $col) } @indexes]);
 }
 
 sub find_in_array
@@ -381,7 +399,7 @@ sub find_in_array
 
 sub create_partitions
 {
-   my($depenses, $scheme, $currency) = @_;
+   my($depenses, $scheme, $currency, $col) = @_;
 
    my @scheme_parts = map { [] } @$scheme;
    my $other_parts = [];
@@ -402,7 +420,7 @@ sub create_partitions
 
       my $concurrency_factor = @partitions_fit_indexes;
 
-      my $part = xl_rowcol_to_cell($index + 1, 2).($concurrency_factor > 1 ? "/".$concurrency_factor : "");
+      my $part = xl_rowcol_to_cell($index + 1, $col).($concurrency_factor > 1 ? "/".$concurrency_factor : "");
 
       foreach(@partitions_fit_indexes)
       {
