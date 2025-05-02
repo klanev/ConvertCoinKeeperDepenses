@@ -56,6 +56,11 @@ for my $item (@{ $input_data->{log} })
    }
    elsif($type eq "Расход")
    {
+      if($to eq "Евгении")
+      {
+         $item->{descr} = "Транш, ".$item->{descr} unless ($item->{descr} =~ /транш/i);
+      }
+
       push @depenses, $item;
    }
    else
