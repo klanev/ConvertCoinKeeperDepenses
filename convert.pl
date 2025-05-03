@@ -17,8 +17,8 @@ my $currency_info = {
    };
 
 my ( %params );
-( GetOptions( \%params, "output=s" , 'after=s', 'before=s', 'rus' ) && @ARGV == 1 )
-   || die "Usage: convert <coin keeper csv> [-after <start date>] [-before <end date>] [--rus]\n";
+( GetOptions( \%params, "output=s" , 'after=s', 'before=s', 'rus', 'rate=s%' ) && @ARGV == 1 )
+   || die "Usage: convert <coin keeper csv> [-after <start date>] [-before <end date>] [--rus] [--rate <currency>=<rate>]\n";
 
 my $input_file = $ARGV[0];
 
@@ -30,6 +30,9 @@ my @incomes;
 my @in_transfers;
 
 my $input_data = load_csv($input_file);
+
+my $rates = $params{rate};
+$rates = {} unless defined $rates;
 
 for my $item (@{ $input_data->{log} })
 {
@@ -56,6 +59,8 @@ for my $item (@{ $input_data->{log} })
    }
    elsif($type eq "Расход")
    {
+      fix_transfer_by_rates($item, $rates);
+
       if($to eq "Евгении")
       {
          $item->{descr} = "Транш, ".$item->{descr} unless ($item->{descr} =~ /транш/i);
@@ -572,9 +577,9 @@ sub load_csv
       my $to = $columns->[3];
       my $descr = $columns->[10];
       my $tags = $columns->[4];
-      my $sum_from = $columns->[5];
+      my $sum_from = to_dot_num($columns->[5]);
       my $currency_from = $columns->[6];
-      my $sum_to = $columns->[7];
+      my $sum_to = to_dot_num($columns->[7]);
       my $currency_to = $columns->[8];
 
       push @$log, {
@@ -783,4 +788,38 @@ sub create_depense_header
    pop @$result;
 
    return $result;
+}
+
+sub fix_transfer_by_rates
+{
+   my($transfer, $rates) = @_;
+
+   my $sum_from = $transfer->{sum_from};
+   my $currency_from = $transfer->{currency_from};
+
+   my $from_fixed = fix_transfer_sum_by_rates($transfer, $rates, 'sum_from', 'currency_from');
+   my $to_fixed = fix_transfer_sum_by_rates($transfer, $rates, 'sum_to', 'currency_to');
+
+   if ($from_fixed or $to_fixed)
+   {
+      $transfer->{descr} = sprintf('(%.2f %s)', $sum_from, get_currency_name($currency_from)).$transfer->{descr};
+   }   
+}
+
+sub fix_transfer_sum_by_rates
+{
+   my($transfer, $rates, $sum_name, $currency_name) = @_;
+
+   my $currency = $transfer->{$currency_name};
+   my $rate = $rates->{$currency};
+   
+   if (($currency ne 'RUB') and defined($rate))
+   {
+      $transfer->{$currency_name} = 'RUB';
+      $transfer->{$sum_name} = sprintf('%.2f', $transfer->{$sum_name} * $rate);
+
+      return 1;
+   }
+
+   return 0;
 }
