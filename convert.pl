@@ -17,8 +17,8 @@ my $currency_info = {
    };
 
 my ( %params );
-( GetOptions( \%params, "output=s" , 'after=s', 'before=s', 'rus', 'rate=s%' ) && @ARGV == 1 )
-   || die "Usage: convert <coin keeper csv> [-after <start date>] [-before <end date>] [--rus] [--rate <currency>=<rate>]\n";
+( GetOptions( \%params, "output=s" , 'after=s', 'before=s', 'rus', 'rate=s%', 'travel-start=s', 'travel-end=s' ) && @ARGV == 1 )
+   || die "Usage: convert <coin keeper csv> [-after <start date>] [-before <end date>] [--rus] [--rate <currency>=<rate>] [--travel-start <travel start date> --travel-end <travel-end-date>]\n";
 
 my $input_file = $ARGV[0];
 
@@ -59,6 +59,8 @@ for my $item (@{ $input_data->{log} })
    }
    elsif($type eq "Расход")
    {
+      fix_transfer_travel_tag($item, \%params);
+
       fix_transfer_by_rates($item, $rates);
 
       if($to eq "Евгении")
@@ -323,7 +325,7 @@ sub calc_depence_statistics
          { name => "Сумма (\"Мистолово\")"         , tag => "ОхтинскоеРаздолье" },
          { name => "Сумма (\"Водолей-2\")"         , tag => "Водолей-2",                                 priority => 4 },
          { name => "Сумма (\"Колумб\")"            , tag => "Колумб",                                    priority => 4 },
-         { name => "Сумма (отпуск)"                , tag => "отпуск",                                    priority => 1 }
+         { name => "Сумма (отпуск)"                , tag => "отпуск",                                    priority => 5 }
       ],
       $currency,
       $col);
@@ -822,4 +824,36 @@ sub fix_transfer_sum_by_rates
    }
 
    return 0;
+}
+
+sub fix_transfer_travel_tag
+{
+   my($item, $params) = @_;
+
+   if (!find_in_array('отпуск', $item->{tags}) && is_travel($item, $params))
+   {
+      push @{ $item->{tags} }, 'отпуск';
+   }
+}
+
+sub is_travel
+{
+   my($item, $params) = @_;
+
+   return 0 if $item->{currency_from} eq 'RUB';
+
+   my $date = $item->{date};
+
+   my $travel_start = $params->{'travel-start'};
+   my $travel_end = $params->{'travel-end'};
+
+   return 0 unless
+      (defined $travel_start || defined $travel_end) &&
+      (!defined $travel_start || 1 != compare_date($travel_start, $date)) &&
+      (!defined $travel_end || -1 != compare_date($travel_end, $date));
+
+   return 0 if
+      find_in_array('не_отпуск', $item->{tags});
+
+   return 1;
 }
