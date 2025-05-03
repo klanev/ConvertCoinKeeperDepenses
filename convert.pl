@@ -17,8 +17,8 @@ my $currency_info = {
    };
 
 my ( %params );
-( GetOptions( \%params, "output=s" , 'after=s', 'before=s', 'rus', 'rate=s%', 'travel-start=s', 'travel-end=s' ) && @ARGV == 1 )
-   || die "Usage: convert <coin keeper csv> [-after <start date>] [-before <end date>] [--rus] [--rate <currency>=<rate>] [--travel-start <travel start date> --travel-end <travel-end-date>]\n";
+( GetOptions( \%params, "output=s" , 'after=s', 'before=s', 'rus', 'rate=s%', 'travel-start=s', 'travel-end=s', 'squash-travel' ) && @ARGV == 1 )
+   || die "Usage: convert <coin keeper csv> [-after <start date>] [-before <end date>] [--rus] [--rate <currency>=<rate>] [--travel-start <travel start date> --travel-end <travel-end-date>] [--squash-travel]\n";
 
 my $input_file = $ARGV[0];
 
@@ -34,6 +34,8 @@ my $input_data = load_csv($input_file);
 my $rates = $params{rate};
 $rates = {} unless defined $rates;
 
+my %squashed_travel_depenses;
+
 for my $item (@{ $input_data->{log} })
 {
    my $date = $item->{date};
@@ -45,6 +47,11 @@ for my $item (@{ $input_data->{log} })
    next unless
       ( ! defined $after || 1 != compare_date( $after, $date ) ) &&
       ( ! defined $before || -1 != compare_date( $before, $date ) );
+
+   if(!!%squashed_travel_depenses && defined $params{'travel-end'} && 1 == compare_date($date, $params{'travel-end'}))
+   {
+      push @depenses, get_squashed_travel_depenses($after, \%squashed_travel_depenses);
+   }   
 
    next if ($to eq "Мое") || ($to eq "Мое (\$)") || ($descr =~ /\(скрыть\)/) || ($from eq "Income" and $to eq "Копилка");
    next if $to eq "Неучтенные";
@@ -63,6 +70,8 @@ for my $item (@{ $input_data->{log} })
 
       fix_transfer_by_rates($item, $rates);
 
+      next if squash_travel_depense($item, \%params, \%squashed_travel_depenses);
+
       if($to eq "Евгении")
       {
          $item->{descr} = "Транш, ".$item->{descr} unless ($item->{descr} =~ /транш/i);
@@ -75,6 +84,8 @@ for my $item (@{ $input_data->{log} })
       die "Unknown type: $type";
    }
 }
+
+push @depenses, get_squashed_travel_depenses($before, \%squashed_travel_depenses);
 
 sort_log(\@depenses);
 
@@ -841,19 +852,61 @@ sub is_travel
    my($item, $params) = @_;
 
    return 0 if $item->{currency_from} eq 'RUB';
-
-   my $date = $item->{date};
-
-   my $travel_start = $params->{'travel-start'};
-   my $travel_end = $params->{'travel-end'};
-
-   return 0 unless
-      (defined $travel_start || defined $travel_end) &&
-      (!defined $travel_start || 1 != compare_date($travel_start, $date)) &&
-      (!defined $travel_end || -1 != compare_date($travel_end, $date));
+   
+   return 0 unless is_in_travel_period($item->{date}, $params);
 
    return 0 if
       find_in_array('не_отпуск', $item->{tags});
 
    return 1;
+}
+
+sub is_in_travel_period
+{
+   my($date, $params) = @_;
+
+   my $travel_start = $params->{'travel-start'};
+   my $travel_end = $params->{'travel-end'};
+
+   return
+      (defined $travel_start || defined $travel_end) &&
+      (!defined $travel_start || 1 != compare_date($travel_start, $date)) &&
+      (!defined $travel_end || -1 != compare_date($travel_end, $date));
+}
+
+sub squash_travel_depense
+{
+   my($item, $params, $collector) = @_;
+
+   if (find_in_array('отпуск', $item->{tags}) &&
+       is_in_travel_period($item->{date}, $params))
+   {
+      $collector->{$item->{currency_from}} += $item->{sum_from};
+
+      return 1;
+   }
+
+   return 0;
+}
+
+sub get_squashed_travel_depenses
+{
+   my($date, $collector) = @_;
+
+   my @result = map { {
+      date => $date,
+      type => "Расход",
+      from => undef,
+      to => undef,
+      descr => "Траты в отпуске, ".get_currency_name($_),
+      tags => ['отпуск'],
+      sum_from => $collector->{$_},
+      sum_to => $collector->{$_},
+      currency_from => $_,
+      currency_to => $_ }
+   } keys %$collector;
+
+   %$collector = ();
+
+   return @result;
 }
