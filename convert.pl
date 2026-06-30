@@ -315,11 +315,8 @@ sub calc_depence_statistics
       [
          {                                           destinations => ["Евгении"] },
          { name => "Сумма (д/Лизы)"                , tag => "Лиза", destinations => ["Лизе"],            priority => 2 },
-         { name => ""                              , tag => "Лиза", destinations => ["Здоровье"],        priority => 3, conditions => "all" },
          { name => "Сумма (д/Гриши)"               , tag => "Гриша",                                     priority => 2 },
-         { name => ""                              , tag => "Гриша",destinations => ["Здоровье"],        priority => 3, conditions => "all"  },
          { name => "Сумма (д/Саши)"                , tag => "Саша",                                      priority => 2 },
-         { name => ""                              , tag => "Саша", destinations => ["Здоровье"],        priority => 3, conditions => "all"  },
          { name => "Сумма (продукты)"              , destinations => ["Groceries", "Eating outside"],    priority => 4 },
          { name => "Сумма (крузак)"                , tag => "TLCP" },
          { name => "Сумма (ШО)"                    , tag => "ШО" },
@@ -332,6 +329,9 @@ sub calc_depence_statistics
          { name => "Сумма (космет-я, парикмах.)"   , tag => "внешность" },
          { name => "Сумма (спорт, танцы)"          , tag => "спорт" },
          { name => "Сумма (медицина)"              , destinations => ["Здоровье"] },
+         { name => ""                              , tag => "Саша", destinations => ["Здоровье"],        priority => 3, conditions => "all"  },
+         { name => ""                              , tag => "Гриша",destinations => ["Здоровье"],        priority => 3, conditions => "all"  },
+         { name => ""                              , tag => "Лиза", destinations => ["Здоровье"],        priority => 3, conditions => "all" },
          { name => "Сумма (Благотворительность)"   , destinations => ["Благотворительность"] },
          { name => "Сумма (\"Мистолово\")"         , tag => "ОхтинскоеРаздолье" },
          { name => "Сумма (\"Водолей-2\")"         , tag => "Водолей-2",                                 priority => 4 },
@@ -468,11 +468,17 @@ sub create_partitions
 
    for(0..$#$partitions)
    {
-      if((defined $partitions->[$_]) && ($_ != $#$partitions) && ($partitions->[$_ + 1]->[0] eq ""))
+      if(defined $partitions->[$_])
       {
-         push @{ $partitions->[$_] }, $partitions->[$_ + 1]->[2];
+         my $column_offset = 1;
+         while(($_ + $column_offset) <= $#$partitions && ($partitions->[$_ + $column_offset]->[0] eq ""))
+         {
+            push @{ $partitions->[$_] }, $partitions->[$_ + $column_offset]->[2];
 
-         $partitions->[$_ + 1] = undef;
+            $partitions->[$_ + $column_offset] = undef;
+
+            ++$column_offset;
+         }
       }
    }
 
