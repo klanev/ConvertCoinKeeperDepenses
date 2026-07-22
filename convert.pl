@@ -76,6 +76,10 @@ for my $item (@{ $input_data->{log} })
       {
          $item->{descr} = "Транш, ".$item->{descr} unless ($item->{descr} =~ /транш/i);
       }
+      if($to eq "Лизе")
+      {
+         $item->{descr} = "Лизе, ".$item->{descr} unless ($item->{descr} =~ /транш/i);
+      }
 
       push @depenses, $item;
    }
