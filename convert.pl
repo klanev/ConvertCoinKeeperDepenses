@@ -17,8 +17,8 @@ my $currency_info = {
    };
 
 my ( %params );
-( GetOptions( \%params, "output=s" , 'after=s', 'before=s', 'rus', 'rate=s%', 'travel-start=s', 'travel-end=s', 'squash-travel' ) && @ARGV == 1 )
-   || die "Usage: convert <coin keeper csv> [-after <start date>] [-before <end date>] [--rus] [--rate <currency>=<rate>] [--travel-start <travel start date> --travel-end <travel-end-date>] [--squash-travel]\n";
+( GetOptions( \%params, "output=s" , 'after=s', 'before=s', 'rus', 'rate=s%', 'travel-start=s', 'travel-end=s', 'squash-travel', 'process-flat-support' ) && @ARGV == 1 )
+   || die "Usage: convert <coin keeper csv> [-after <start date>] [-before <end date>] [--rus] [--rate <currency>=<rate>] [--travel-start <travel start date> --travel-end <travel-end-date>] [--squash-travel] [--process-flat-support]\n";
 
 my $input_file = $ARGV[0];
 
@@ -94,6 +94,8 @@ push @depenses, get_squashed_travel_depenses($before, \%squashed_travel_depenses
 sort_log(\@depenses);
 
 sort_log(\@incomes);
+
+process_flat_support(\@depenses, \@incomes) if $params{'process-flat-support'};
 
 my @currencies = keys %{ { (map { $_->{currency_from} => undef, $_->{currency_to} => undef } @depenses) } };
 @currencies = sort { compare_currencies($a, $b) } @currencies;
@@ -985,4 +987,25 @@ sub get_squashed_travel_depenses
    %$collector = ();
 
    return @result;
+}
+
+sub process_flat_support
+{
+   my($depenses, $incomes) = @_;
+
+   my @depense_indexes = grep { $depenses->[$_]->{descr} =~ /^квартплата Учительская/ } 0..$#$depenses;
+   my @income_indexes = grep { $incomes->[$_]->{descr} =~ /^компенсация коммунальных платежей/ } 0..$#$incomes;
+
+   die "Трата: 'квартплата Учительская' не найдена\n" unless 0 < @depense_indexes;
+   die "Поступление : 'компенсация коммунальных платежей' должно существовать и быть единственным\n" unless 1 == @income_indexes;
+
+   my $depense = $depenses->[$depense_indexes[0]];
+   my $income = $incomes->[$income_indexes[0]];
+
+   splice @$incomes, $income_indexes[0], 1;
+
+   my $support_value = $income->{sum_to};
+   $depense->{sum_from} -= $support_value;
+   $depense->{sum_to} -= $support_value;
+   $depense->{descr} = $depense->{descr}." с учетом компенсации коммунальных платежей ($support_value)"; 
 }
