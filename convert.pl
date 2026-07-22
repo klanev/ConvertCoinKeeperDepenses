@@ -116,7 +116,7 @@ $bold_fmt->set_bold();
 
 $depenses_sheet->write_row(
    0, 0,
-   ["", "Дата", @{create_depense_header(\@currencies, get_statictics_columns_count())}, "Примечание (д/кого, где потрачено)", "Ресурс (карта)", "Дата", "Поступления, р.", "Примечание"],
+   ["", "Дата", @{create_depense_header(\@currencies, get_statictics_columns_count())}, "Примечание (д/кого, где потрачено)", "Ресурс (карта)", "Дата", "Поступления, р.", "Примечание", "Ресурс (карта)"],
    $bold_fmt);
 
 write_xslx_log($depincs, $depenses_sheet, 1, 0, \@depenses, 
@@ -128,7 +128,7 @@ write_xslx_log($depincs, $depenses_sheet, 1, 0, \@depenses,
       { getter => \&create_from, type => '' }
    ]);
 
-write_xslx_log($depincs, $depenses_sheet, 1, 4 + $dep_cols, \@incomes, ['date', 'sum_from', 'descr']);
+write_xslx_log($depincs, $depenses_sheet, 1, 4 + $dep_cols, \@incomes, ['date', 'sum_from', 'descr', { getter => \&create_to, type => '' }]);
 
 write_statistics($depincs, $depenses_sheet, \@depenses, \@incomes, \@currencies);
 
@@ -789,10 +789,9 @@ sub create_notes
    }
 }
 
-sub create_from
+sub export_card_name
 {
-   my($item) = @_;
-   my $from = $item->{from};
+   my($card_name) = @_;
    
    my $export_card_names = {
       'Кошелёк' => '',
@@ -803,9 +802,33 @@ sub create_from
       'БСПБ' => 'БСПБ А'
    };
 
-   my $exported_from = $export_card_names->{$from};
+   my $exported_card_name = $export_card_names->{$card_name};
 
-   return defined $exported_from ? $exported_from : $from;
+   if(defined $exported_card_name)
+   {
+      return $exported_card_name;
+   }
+   else
+   {
+      $card_name =~ s/\(.*\)//g;
+      return $card_name;
+   }
+}
+
+sub create_from
+{
+   my($item) = @_;
+   my $from = $item->{from};
+
+   return export_card_name($from);
+}
+
+sub create_to
+{
+   my($item) = @_;
+   my $to = $item->{to};
+
+   return export_card_name($to);
 }
 
 sub get_currency_index
