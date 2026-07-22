@@ -116,7 +116,7 @@ $bold_fmt->set_bold();
 
 $depenses_sheet->write_row(
    0, 0,
-   ["", "Дата", @{create_depense_header(\@currencies, get_statictics_columns_count())}, "Примечание", "Дата", "Поступления, р.", "Примечание"],
+   ["", "Дата", @{create_depense_header(\@currencies, get_statictics_columns_count())}, "Примечание (д/кого, где потрачено)", "Ресурс (карта)", "Дата", "Поступления, р.", "Примечание"],
    $bold_fmt);
 
 write_xslx_log($depincs, $depenses_sheet, 1, 0, \@depenses, 
@@ -124,10 +124,11 @@ write_xslx_log($depincs, $depenses_sheet, 1, 0, \@depenses,
       { getter => \&create_descr, type => '' },
       'date',
       { getter => (sub { return create_depense(@_, \@currencies, get_statictics_columns_count()); }), type => 'sum' },
-      { getter => \&create_notes, type => '' }
+      { getter => \&create_notes, type => '' },
+      { getter => \&create_from, type => '' }
    ]);
 
-write_xslx_log($depincs, $depenses_sheet, 1, 3 + $dep_cols, \@incomes, ['date', 'sum_from', 'descr']);
+write_xslx_log($depincs, $depenses_sheet, 1, 4 + $dep_cols, \@incomes, ['date', 'sum_from', 'descr']);
 
 write_statistics($depincs, $depenses_sheet, \@depenses, \@incomes, \@currencies);
 
@@ -786,6 +787,25 @@ sub create_notes
    {
       return "";
    }
+}
+
+sub create_from
+{
+   my($item) = @_;
+   my $from = $item->{from};
+   
+   my $export_card_names = {
+      'Кошелёк' => '',
+      'Зарплатная карта' => 'Сбер А',
+      'Альфа дебетовая ' => 'КАБ А',
+      'Лента А (оф)' => 'КРБ А',
+      'ВТБ' => 'ВТБ А',
+      'БСПБ' => 'БСПБ А'
+   };
+
+   my $exported_from = $export_card_names->{$from};
+
+   return defined $exported_from ? $exported_from : $from;
 }
 
 sub get_currency_index
