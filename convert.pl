@@ -289,7 +289,7 @@ sub write_statistics
    }
 
    my $incomes_stats = calc_income_statistics($incomes, $start_row, $currencies);
-   write_rows($depincs, $depenses_sheet, $start_row, 2 + (scalar(@currencies) * get_statictics_columns_count()), $incomes_stats, $res_fmt);
+   write_rows($depincs, $depenses_sheet, $start_row, 3 + (scalar(@currencies) * get_statictics_columns_count()), $incomes_stats, $res_fmt);
 }
 
 sub write_rows
@@ -405,7 +405,7 @@ sub calc_income_statistics
 
    my $inc_len = @$incomes;
 
-   my $col = 3 + (scalar(@currencies) * get_statictics_columns_count());
+   my $col = 4 + (scalar(@currencies) * get_statictics_columns_count());
 
    my $res = [
       [],
