@@ -321,26 +321,41 @@ sub calc_depence_statistics
          { name => "Сумма (д/Лизы)"                , tag => "Лиза", destinations => ["Лизе"],            priority => 2 },
          { name => "Сумма (д/Гриши)"               , tag => "Гриша",                                     priority => 2 },
          { name => "Сумма (д/Саши)"                , tag => "Саша",                                      priority => 2 },
-         { name => "Сумма (продукты)"              , destinations => ["Groceries", "Eating outside"],    priority => 4 },
+         
+         { name => "Сумма (продукты)"              ,                 destinations => [ "Groceries",
+                                                                                       "Eating outside"],priority => 4 },
+
+         { name => "Сумма (медицина)"              ,                 destinations => ["Здоровье"],       priority => 3 },
+         { name => ""                              , tag => "А",     destinations => ["Здоровье"],       priority => 4, conditions => "all"  },
+         { name => ""                              , tag => "Е",     destinations => ["Здоровье"],       priority => 4, conditions => "all"  },
+         { name => ""                              , tag => "Лиза",  destinations => ["Здоровье"],       priority => 4, conditions => "all"  },
+         { name => ""                              , tag => "Гриша", destinations => ["Здоровье"],       priority => 4, conditions => "all"  },
+         { name => ""                              , tag => "Саша",  destinations => ["Здоровье"],       priority => 4, conditions => "all"  },
+
+         { name => "Сумма (спорт, танцы)"          , tag => "спорт" },
+         { name => "Сумма (космет-я, парикмах.)"   , tag => "внешность" },
+         
          { name => "Сумма (крузак)"                , tag => "TLCP" },
          { name => "Сумма (ШО)"                    , tag => "ШО" },
-         { name => "Сумма (моб.)"                  , tag => "связь" },
-         { name => "Сумма (пошив, ремонт одежды)"  , tag => "одежда" },
+         
          { name => "Сумма (квартира)"              , tag => "Учительская" },
-         { name => "Сумма (подарки к праздникам)"  , destinations => ["Подарки"] },
-         { name => "Сумма (д/И.Л.)"                , tag => "И.Л." },
-         { name => "Сумма (д/РА)"                  , tag => "Р.А." },
-         { name => "Сумма (космет-я, парикмах.)"   , tag => "внешность" },
-         { name => "Сумма (спорт, танцы)"          , tag => "спорт" },
-         { name => "Сумма (медицина)"              , destinations => ["Здоровье"] },
-         { name => ""                              , tag => "Саша", destinations => ["Здоровье"],        priority => 3, conditions => "all"  },
-         { name => ""                              , tag => "Гриша",destinations => ["Здоровье"],        priority => 3, conditions => "all"  },
-         { name => ""                              , tag => "Лиза", destinations => ["Здоровье"],        priority => 3, conditions => "all" },
-         { name => "Сумма (Благотворительность)"   , destinations => ["Благотворительность"] },
          { name => "Сумма (\"Мистолово\")"         , tag => "ОхтинскоеРаздолье" },
-         { name => "Сумма (\"Водолей-2\")"         , tag => "Водолей-2",                                 priority => 4 },
+         { name => "Сумма (\"Уткино\")"            , tag => "Водолей-2",                                 priority => 4 },
          { name => "Сумма (\"Колумб\")"            , tag => "Колумб",                                    priority => 4 },
-         { name => "Сумма (отпуск)"                , tag => "отпуск",                                    priority => 5 }
+         
+         { name => "Сумма (поездки, отпуска)"      , tag => "отпуск",                                    priority => 5 },
+
+         { name => "Сумма (подарки к праздникам)"  ,                 destinations => ["Подарки"],        priority => 3 },
+         { name => ""                              , tag => "А",     destinations => ["Подарки"],        priority => 4, conditions => "all"  },
+         { name => ""                              , tag => "Е",     destinations => ["Подарки"],        priority => 4, conditions => "all"  },
+         { name => ""                              , tag => "Лиза",  destinations => ["Подарки"],        priority => 4, conditions => "all"  },
+         { name => ""                              , tag => "Гриша", destinations => ["Подарки"],        priority => 4, conditions => "all"  },
+         { name => ""                              , tag => "Саша",  destinations => ["Подарки"],        priority => 4, conditions => "all"  },
+
+         { name => "Сумма (д/И.Л.)"                , tag => "И.Л." },
+         { name => "Сумма (д/И.Ф.)"                , tag => "Р.А." },
+         
+         { name => "Сумма (Благотворительность)"   , destinations => ["Благотворительность"] }
       ],
       $currency,
       $row + 4,
@@ -354,14 +369,12 @@ sub calc_depence_statistics
 
    my $stat_line = $row + 1;
    my $sum_without_transh_line   = $stat_line + 1;
-   my $sum_child_line_first      = $sum_without_transh_line + 2;
-   my $sum_child_line_last       = $sum_child_line_first + 2;
-   my $sum_car_tlcp_line         = $sum_without_transh_line + 6;
-   my $sum_car_sho_line          = $sum_without_transh_line + 7;
-   my $sum_flat_line             = $sum_without_transh_line + 10;
-   my $sum_medicine_line         = $sum_without_transh_line + 16;
-   my $sum_other_immovable_first = $sum_without_transh_line + 18;
-   my $sum_other_immovable_last  = $sum_other_immovable_first + 2;
+   my $partitions_start_line     = $row + 4;
+   my $sum_car_tlcp_line         = $partitions_start_line + 7;
+   my $sum_car_sho_line          = $partitions_start_line + 8;
+   my $sum_medicine_line         = $partitions_start_line + 4;
+   my $sum_immovable_first       = $partitions_start_line + 9;
+   my $sum_immovable_last        = $partitions_start_line + 12;
 
    my $res = [
       [],
@@ -369,13 +382,10 @@ sub calc_depence_statistics
       ["В т.ч. б/\"траншей\"", "", "=".xl_rowcol_to_cell($stat_line, $col)."-".create_stat_by_destinations($depenses, ["Евгении"], $currency, $col)],
       ["Сумма б/\"траншей\"-недвиж.-TLCP-медицина-ШО", "",
          "=".xl_rowcol_to_cell($sum_without_transh_line, $col).
-         "-".xl_rowcol_to_cell($sum_flat_line, $col).
          "-".get_sum(\%params)."(".
-            xl_rowcol_to_cell($sum_other_immovable_first, $col).":".xl_rowcol_to_cell($sum_other_immovable_last, $col).")".
+            xl_rowcol_to_cell($sum_immovable_first, $col).":".xl_rowcol_to_cell($sum_immovable_last, $col).")".
          "-".xl_rowcol_to_cell($sum_car_tlcp_line, $col).
          "-".xl_rowcol_to_cell($sum_medicine_line, $col).
-         "-".get_sum(\%params)."(".
-            xl_rowcol_to_cell($sum_child_line_first, $col + 1).":".xl_rowcol_to_cell($sum_child_line_last, $col + 1).")".
          "-".xl_rowcol_to_cell($sum_car_sho_line, $col)],
       @$partitions
    ];
