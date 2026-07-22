@@ -343,6 +343,7 @@ sub calc_depence_statistics
          { name => "Сумма (отпуск)"                , tag => "отпуск",                                    priority => 5 }
       ],
       $currency,
+      $row + 4,
       $col);
 
 
@@ -382,7 +383,7 @@ sub calc_depence_statistics
    push @{ $res->[$#$res] },
       "=".xl_rowcol_to_cell($sum_without_transh_line, $col).
       "-".get_sum(\%params)."(".
-         xl_rowcol_to_cell($sum_without_transh_line + 2, $col).":".xl_rowcol_to_cell(($sum_without_transh_line + 2) + (@$partitions - 1) - 1, $col + 1).")";
+         xl_rowcol_to_cell($sum_without_transh_line + 2, $col).":".xl_rowcol_to_cell(($sum_without_transh_line + 2) + (@$partitions - 1) - 1, $col).")";
 
    return $res;
 }
@@ -426,7 +427,7 @@ sub find_in_array
 
 sub create_partitions
 {
-   my($depenses, $scheme, $currency, $col) = @_;
+   my($depenses, $scheme, $currency, $row, $col) = @_;
 
    my @scheme_parts = map { [] } @$scheme;
    my $other_parts = [];
@@ -470,11 +471,13 @@ sub create_partitions
    ];
 
 
+   my $row_offset = 0;
    for(0..$#$partitions)
    {
       if(defined $partitions->[$_])
       {
          my $column_offset = 1;
+
          while(($_ + $column_offset) <= $#$partitions && ($partitions->[$_ + $column_offset]->[0] eq ""))
          {
             push @{ $partitions->[$_] }, $partitions->[$_ + $column_offset]->[2];
@@ -483,6 +486,16 @@ sub create_partitions
 
             ++$column_offset;
          }
+
+         if($column_offset != 1)
+         {
+            $partitions->[$_]->[2] = ($partitions->[$_]->[2])."+".
+               get_sum(\%params)."(".
+                  xl_rowcol_to_cell($row + $row_offset, $col + 1).":".
+                  xl_rowcol_to_cell($row + $row_offset, $col + $column_offset - 1).")";
+         }
+
+         ++$row_offset;
       }
    }
 
