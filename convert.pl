@@ -1004,7 +1004,7 @@ sub process_flat_support
 {
    my($depenses, $incomes) = @_;
 
-   my @depense_indexes = grep { $depenses->[$_]->{descr} =~ /^квартплата Учительская/ } 0..$#$depenses;
+   my @depense_indexes = grep { $depenses->[$_]->{descr} =~ /^(квартплата|эксплуатационные расходы) Учительская/ } 0..$#$depenses;
    my @income_indexes = grep { $incomes->[$_]->{descr} =~ /^компенсация коммунальных (платежей|расходов)/ } 0..$#$incomes;
 
    die "Трата: 'квартплата Учительская' не найдена\n" unless 0 < @depense_indexes;
