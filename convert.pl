@@ -17,13 +17,16 @@ my $currency_info = {
    };
 
 my ( %params );
-( GetOptions( \%params, "output=s" , 'after=s', 'before=s', 'rus', 'rate=s%', 'travel-start=s', 'travel-end=s', 'squash-travel', 'process-flat-support' ) && @ARGV == 1 )
-   || die "Usage: convert <coin keeper csv> [-after <start date>] [-before <end date>] [--rus] [--rate <currency>=<rate>] [--travel-start <travel start date> --travel-end <travel-end-date>] [--squash-travel] [--process-flat-support]\n";
+( GetOptions( \%params, "output=s" , 'after=s', 'before=s', 'rus', 'rate=s%', 'travel=s@', 'squash-travel', 'process-flat-support' ) && @ARGV == 1 )
+   || die "Usage: convert <coin keeper csv> [-after <start date>] [-before <end date>] [--rus] [--rate <currency>=<rate>] [--travel [<travel start date>]-[<travel-end-date>]] [--squash-travel] [--process-flat-support]\n";
 
 my $input_file = $ARGV[0];
 
 my $after = $params{after};
 my $before = $params{before};
+
+$params{travel} = [] unless exists $params{travel};
+$params{travel} = convert_travels($params{travel}, $after, $before);
 
 my @depenses;
 my @incomes;
@@ -66,20 +69,24 @@ for my $item (@{ $input_data->{log} })
    }
    elsif($type eq "Расход")
    {
-      fix_transfer_travel_tag($item, \%params);
+      if($to eq "Евгении")
+      {
+         $item->{descr} = "Транш, ".$item->{descr} unless ($item->{descr} =~ /транш/i);
+      }
+      elsif($to eq "Лизе")
+      {
+         $item->{descr} = "Лизе, ".$item->{descr} unless ($item->{descr} =~ /транш/i);
+      }
+      else
+      {
+         fix_transfer_travel_tag($item, \%params);
+      }
 
       fix_transfer_by_rates($item, $rates);
 
       next if squash_travel_depense($item, \%params, \%squashed_travel_depenses);
 
-      if($to eq "Евгении")
-      {
-         $item->{descr} = "Транш, ".$item->{descr} unless ($item->{descr} =~ /транш/i);
-      }
-      if($to eq "Лизе")
-      {
-         $item->{descr} = "Лизе, ".$item->{descr} unless ($item->{descr} =~ /транш/i);
-      }
+      
 
       push @depenses, $item;
    }
@@ -937,17 +944,21 @@ sub is_travel
    return 1;
 }
 
+sub is_in_selected_travel_period
+{
+   my($date, $travel_period) = @_;
+
+   return
+      0 >= compare_date($travel_period->{travel_start}, $date) &&
+      0 <= compare_date($travel_period->{travel_end}, $date);
+}
+
 sub is_in_travel_period
 {
    my($date, $params) = @_;
 
-   my $travel_start = $params->{'travel-start'};
-   my $travel_end = $params->{'travel-end'};
-
-   return
-      (defined $travel_start || defined $travel_end) &&
-      (!defined $travel_start || 0 >= compare_date($travel_start, $date)) &&
-      (!defined $travel_end || 0 <= compare_date($travel_end, $date));
+   my $travels = $params->{travel};
+   return 0 != grep { is_in_selected_travel_period($date, $_) } @$travels;
 }
 
 sub squash_travel_depense
@@ -1007,4 +1018,51 @@ sub process_flat_support
    $depense->{sum_from} -= $support_value;
    $depense->{sum_to} -= $support_value;
    $depense->{descr} = $depense->{descr}." с учетом компенсации коммунальных платежей ($support_value)"; 
+}
+
+sub convert_travel_period
+{
+   my($travel_period, $after, $before) = @_;
+
+   local $_;
+
+   die "Wrong travel period '$travel_period'\n"
+      unless $travel_period =~ /^(([0-9]{2,2})\.([0-9]{2,2})\.([0-9]{4,4})){0,1}\-(([0-9]{2,2})\.([0-9]{2,2})\.([0-9]{4,4})){0,1}$/;
+
+   my $res = {};
+   
+   if ($1 eq '')
+   {
+      die "Cannot find start of travel '$travel_period'\n" unless defined $$after;
+      
+      $res->{travel_start} = $$after;
+      $$after = undef;
+   }
+   else
+   {
+      $res->{travel_start} = "$2.$3.$4";
+   }
+
+   if ($5 eq '')
+   {
+      die "Cannot find start of travel '$travel_period'\n" unless defined $$before;
+
+      $res->{travel_end} = $$before;
+      $$before = undef;
+   }
+   else
+   {
+      $res->{travel_end} = "$6.$7.$8";
+   }
+
+   print "Travel:".$res->{travel_start}."->".$res->{travel_end}."\n";
+
+   return $res;
+}
+
+sub convert_travels
+{
+   my($travels, $after, $before) = @_;
+
+   return [ map { convert_travel_period($_, $after, $before) } @$travels ];
 }
