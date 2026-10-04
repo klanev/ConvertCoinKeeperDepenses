@@ -994,7 +994,7 @@ sub process_flat_support
    my($depenses, $incomes) = @_;
 
    my @depense_indexes = grep { $depenses->[$_]->{descr} =~ /^квартплата Учительская/ } 0..$#$depenses;
-   my @income_indexes = grep { $incomes->[$_]->{descr} =~ /^компенсация коммунальных платежей/ } 0..$#$incomes;
+   my @income_indexes = grep { $incomes->[$_]->{descr} =~ /^компенсация коммунальных (платежей|расходов)/ } 0..$#$incomes;
 
    die "Трата: 'квартплата Учительская' не найдена\n" unless 0 < @depense_indexes;
    die "Поступление : 'компенсация коммунальных платежей' должно существовать и быть единственным\n" unless 1 == @income_indexes;
