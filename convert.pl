@@ -929,12 +929,10 @@ sub is_travel
 {
    my($item, $params) = @_;
 
-   return 0 if $item->{currency_from} eq 'RUB';
-   
    return 0 unless is_in_travel_period($item->{date}, $params);
 
    return 0 if
-      find_in_array('не_отпуск', $item->{tags});
+      0 != grep { find_in_array($_, $item->{tags}) } ('не_отпуск', 'Учительская', 'Колумб', 'ОхтинскоеРаздолье', 'Водолей-2');
 
    return 1;
 }
@@ -948,16 +946,17 @@ sub is_in_travel_period
 
    return
       (defined $travel_start || defined $travel_end) &&
-      (!defined $travel_start || 1 != compare_date($travel_start, $date)) &&
-      (!defined $travel_end || -1 != compare_date($travel_end, $date));
+      (!defined $travel_start || 0 >= compare_date($travel_start, $date)) &&
+      (!defined $travel_end || 0 <= compare_date($travel_end, $date));
 }
 
 sub squash_travel_depense
 {
    my($item, $params, $collector) = @_;
 
-   if (find_in_array('отпуск', $item->{tags}) &&
-       is_in_travel_period($item->{date}, $params))
+   return 0 unless $params->{'squash-travel'};
+
+   if (find_in_array('отпуск', $item->{tags}))
    {
       $collector->{$item->{currency_from}} += $item->{sum_from};
 
